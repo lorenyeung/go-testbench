@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<div class="head">
+    {{ template "navbar" . }}
+    {{ template "sidenav"  . }}
+</div>
+
+<body>
+    <div class="container">
+        <h1>Greetings on the field '{{ .email }}'.</h1>
+        <div class="row">
+            <div class="col s12">
+                <div class="card">
+                    <div class="card-content">
+                        <p>Running Containers</p>
+                    </div>
+                    <div class="card-tabs">
+                        <ul class="tabs tabs-fixed-width">
+                            <li class="tab"><a class="active" href="#rt">Artifactory | Edge</a></li>
+                            <li class="tab"><a href="#xr">Xray</a></li>
+                            <li class="tab"><a href="#mc">Mission Control</a></li>
+                            <li class="tab"><a href="#dt">Distribution</a></li>
+                            <li class="tab"><a href="#jk">Jenkins</a></li>
+                            <li class="tab"><a href="#bb">Bamboo</a></li>
+                            <li class="tab"><a href="#tc">Teamcity</a></li>
+                        </ul>
+                    </div>
+                    <div class="card-content grey lighten-4">
+                        <div id="rt">
+                            <form method="post" id="rtcreate">
+                                <div class="row">
+                                    <div class="input-field col s6">
+                                        <input placeholder="My Artifactory instance" id="name" name="name" type="text" class="validate">
+                                        <label for="name">Name</label>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="input-field col s12">
+                                        <input disabled value="I am not editable" id="disabled" type="text"
+                                            class="validate">
+                                        <label for="disabled">Disabled</label>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="input-field col s12">
+                                        <input id="version" name="version" type="text" class="autocomplete">
+                                        <label for="version">Version</label>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="input-field col s12">
+                                        <input id="email" type="email" class="validate">
+                                        <label for="email">Email</label>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col s12">
+                                        This is an inline input field:
+                                        <div class="input-field inline">
+                                            <input id="email_inline" type="email" class="validate">
+                                            <label for="email_inline">Email</label>
+                                            <span class="helper-text" data-error="wrong" data-success="right">Helper
+                                                text</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn-flat waves-effect waves-light" type="submit" form="rtcreate" >Submit
+                                    <i class="material-icons right">send</i>
+                                </button>
+                            </form>
+                        </div>
+                        <div id="xr">XR Xray</div>
+                        <div id="mc">MC Mission Control</div>
+                        <div id="dt">DT Distribution</div>
+                        <div id="jk">JK Jenkins</div>
+                        <div id="bb">BB bamboo</div>
+                        <div id="tc">TC teamcity</div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    {{ template "footer" }}
+</body>
+<script>
+    var _art_versions = {{.art_versions}};
+</script>
+</html>

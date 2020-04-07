@@ -1,0 +1,141 @@
+<html>
+
+<body>
+    {{ template "navbar" . }}
+    <div class="container">
+        <h1>
+            {{ .title }}
+        </h1>
+        <!-- Page Content goes here -->
+
+<style>
+    body {
+        background-color:#eee;
+    }
+</style>
+
+<head>
+	<link rel="icon" href="images/jfrog-glasses.png">
+    <title>Loren's Testbench</title>
+    <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <base target="_top">
+</head>
+<body>
+	
+    <ul class="sidenav" id="mobile-demo">
+        <li><a href="http://materializecss.com/">CSS</a></li>
+    </ul>
+
+	<blockquote>"If you're going through hell, keep going."</blockquote>
+        <div id ="services" class="col s12">
+            <h3>Services</h3>
+            <div class="row" id="service_row"></div>
+        </div>
+
+        <div id ="backend" class="col s12">
+            <h3>Backend</h3>
+                <ul id="backend_row" class="collapsible"></ul>
+        </div>
+        <div id = "logs" class="col s12">
+            <h3>Logs</h3>
+        </div>
+    </div>
+</body>
+<script>
+function createCard(cardData) {
+    var cardTemplate = [
+        '<div class="col m4">',
+            '<div class="card small">',
+                '<div class="card-image waves-effect waves-block waves-light">',
+                    '<img class="activator" src="',cardData.imageSrc,'">',
+                '</div>',
+                '<div class ="card-content">',
+                    '<span class="card-title activator grey-text text-darken-4" id=',cardData.frontTitle,'>',cardData.frontTitle || 'No title provided','<i class="material-icons right">more_vert</i></span>',
+		    '<p><a href="',cardData.frontLink || 'No link provided','">Link</a><i id =',cardData.id,' class="material-icons right icon-red">cloud_off</i></p>',
+                '</div>',
+                '<div class = "card-reveal">',
+	    	          '<span class="card-title grey-text text-darken-4">',cardData.backTitle || 'No Title provided','<i class="material-icons right">close</i></span>',
+                      '<p>',cardData.backContent || 'No content provided','</p>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ];
+    // a jQuery node
+    return $(cardTemplate.join(''));
+}
+function createTable(data, cardId) {
+    var table = "";
+    for (key in data) {
+        var iconId = cardId+"_"+data[key];
+        var serviceId = cardId+"_"+key;
+        table = table +  
+          '<tr>'+
+            '<td id='+serviceId+'>'+key+'</td>'+
+            '<td>'+data[key]+'</td>'+
+            '<td><i id ='+iconId+' class="material-icons red-text">clear</i></td>'+
+          '</tr>';
+    }
+    return table;
+}
+function createBackendCard(cardData, table) {
+    var backendCardTemplate = [
+        '<li>',
+            '<div class="collapsible-header"><i class="material-icons">filter_drama</i>',cardData.frontTitle,'</div>',
+            '<div class="collapsible-body white">',
+		'<table>',
+        		'<thead>',
+          			'<tr>',
+              				'<th>Service</th>',
+              				'<th>Port</th>',
+					'<th>Health</th>',
+          			'</tr>',
+        		'</thead>',
+        		'<tbody>',
+          			table,
+        '</tbody>',
+      '</table>',
+	'</div>',
+        '</li>'
+    ];
+    return $(backendCardTemplate.join(''));
+}
+
+var cards = $();
+var backendCards = $();
+
+$.getJSON("http://loren.jfrog.team/data.json", {}, function(data){
+	// Store all the card nodes
+	console.log("Christy is a massive butthead:"+data);
+	data.forEach(function(item, i) {
+    		cards = cards.add(createCard(item));
+                var table = "";
+		item.backend.forEach(function(childEntry, j) { 
+			table = createTable(childEntry, item.id); 
+		});
+                backendCards = backendCards.add(createBackendCard(item, table));
+	});
+	$('#service_row').append(cards);
+        
+        $('#backend_row').append(backendCards);
+});
+
+$.getJSON("http://loren.jfrog.team/quote.json", {}, function(json) {
+    console.log(json);
+var random = json.featured[Math.floor(Math.random() * jsonContent.featured.length)];
+    console.log(random)
+});
+
+$(document).ready(function(){
+    $('.tabs').tabs();
+    $('.collapsible').collapsible();
+});
+
+</script>
+<script src="bundle.js"></script>
+
+
+    {{ template "footer" }}
+</body>
+
+</html>

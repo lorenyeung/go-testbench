@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<div class="head">
+    {{ template "navbar" . }}
+    {{ template "sidenav"  . }}
+</div>
+
+<body>
+    <div class="container">
+            {{if .seen}}
+        <h1>Welcome back to the field '{{ .email }}'.</h1>
+        {{else}}
+        <h1>Greetings on the field '{{ .email }}'.</h1>
+        {{end}}
+        <div class="row">
+            <div class="col s8">
+                <div class="card">
+                    <div class="card-content">
+                        <p>Running Containers</p>
+                    </div>
+                    <div class="card-tabs">
+                        <ul class="tabs tabs-fixed-width">
+                            <li class="tab"><a class="active" href="#test4">Artifactory</a></li>
+                            <li class="tab"><a href="#test5">Xray</a></li>
+                            <li class="tab"><a href="#test6">Other</a></li>
+                        </ul>
+                    </div>
+                    <div class="card-content grey lighten-4">
+                        <div id="test4">
+                            <ul class="collapsible">
+                                {{range .art_data}}
+                                <li>
+                                    {{ if (eq .State "running" )}}
+                                    <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.Names}}
+                                    </div>
+                                    {{else}}
+                                    <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.Names}}
+                                    </div>
+                                    {{end}}
+                                    <div class="collapsible-body"><span>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{.Image}}</td>
+                                                    <td>{{range .Ports}} {{.PublicPort}}:{{.PrivatePort}} {{ end }}</td>
+                                                    <td>{{.State}}, {{.Status}}</td>
+                                                    <p>{{ if (eq .State "running" )}}
+                                                        <a class="waves-effect waves-light btn-flat btn" id="{{.Id}}" href="/authed/stop/{{.Id}}"><i
+                                                                class="material-icons left">delete</i>stop</a>
+                                                        <a class="waves-effect waves-light btn-flat btn"><i
+                                                                class="material-icons left">delete</i>restart</a>
+                                                        {{else}}
+                                                        <a class="waves-effect waves-light btn-flat btn" id="{{.Id}}" href="/authed/start/{{.Id}}"><i
+                                                                class="material-icons left">cloud</i>start</a>
+                                                        {{end}}
+
+                                                        <a class="waves-effect waves-light btn-flat btn"><i
+                                                                class="material-icons left">delete</i>edit</a>
+                                                        <a class="waves-effect waves-light btn-flat btn"><i
+                                                                class="material-icons left">delete</i>delete</a>
+                                                    </p>
+                                                </tr>
+                                            </tbody>
+                                        </span></div>
+                                </li>
+                                {{ end }}
+                            </ul>
+                        </div>
+                        <div id="test5">Test 2</div>
+                        <div id="test6">Test 3</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col s4">
+                <div class="card blue-grey darken-1">
+                    <div class="card-content white-text">
+                        <span class="card-title"><i class="material-icons">insert_chart</i>Metrics</span>
+                        <p>I am a very simple card. I am good at containing small bits of information.
+                            I am convenient because I require little markup to use effectively.</p>
+                    </div>
+                    <div class="card-action">
+                        <a href="#">This is a link</a>
+                        <a href="#">This is a link</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {{ template "footer" }}
+</body>
+</html>

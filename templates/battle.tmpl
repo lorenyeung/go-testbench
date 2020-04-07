@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+{{ template "navbar" }}
+{{ template "sidenav"  . }}
+
+<body>
+
+    {{if .seen}}
+    <h1>Welcome back to the battlefield '{{ .email }}'.</h1>
+    {{else}}
+    <h1>Welcome to the battlefield '{{ .email }}'.</h1>
+    {{end}}
+
+    {{ template "footer" }}
+
+</body>
+
+</html>

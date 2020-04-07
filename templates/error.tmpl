@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<link rel="icon" type="image/png" href="/img/favicon.ico" />
+<html>
+{{ template "navbar" . }}
+{{ template "sidenav" . }}
+
+<head>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>{{ .message }}</h1>
+        {{ template "footer" }}
+    </div>
+</body>
+
+</html>

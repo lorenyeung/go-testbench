@@ -1,0 +1,30 @@
+{{ define "footer" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var elSidenav = document.querySelectorAll('.sidenav');
+        var elTabs = document.querySelectorAll('.tabs');
+        var elCol = document.querySelectorAll('.collapsible');
+        var elSelect = document.querySelectorAll('select');
+        var elAutoComplete = document.querySelectorAll('.autocomplete');
+        var options;
+
+if (typeof _art_versions !== 'undefined') {
+var txt = "{";
+   _art_versions.forEach(myFunc)
+   function myFunc(value, index, array) {
+       txt = txt + "\"" + value + "\"" +":null,";
+   }
+   var txt2 = txt.slice(0, -1)
+   txt2 = txt2 + "}"
+   var obj = JSON.parse(txt2)    
+}
+   var ACoptions = { "data":obj}
+   
+        var instTabs = M.Tabs.init(elTabs, options);
+        var instCol = M.Collapsible.init(elCol, options);
+        var instSideNav = M.Sidenav.init(elSidenav, options);
+        var instAutoComplete = M.Autocomplete.init(elAutoComplete, ACoptions);
+        var instances = M.FormSelect.init(elSelect, options);
+    });
+</script>
+{{ end }}
