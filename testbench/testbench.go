@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,6 +45,22 @@ type backendJSON struct {
 	Health  string `json:"health"`
 }
 
+type platformStruct struct {
+	Router struct {
+		NodeID  string `json:"node_id"`
+		State   string `json:"state"`
+		Message string `json:"message"`
+	}
+	Services []platformServices `json:"services"`
+}
+
+type platformServices struct {
+	ServiceID string `json:"service_id"`
+	NodeID    string `json:"node_id"`
+	State     string `json:"state"`
+	Message   string `json:"message"`
+}
+
 func main() {
 	user, err := user.Current()
 	auth.CheckErr(err)
@@ -51,7 +68,6 @@ func main() {
 	configPath := user.HomeDir + configFolder
 
 	log.Println("Checking existence of home folder")
-
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Println("No config folder found")
 		err = os.MkdirAll(configPath, 0700)
@@ -97,8 +113,7 @@ func read(mp metadata, msg []byte) metadata {
 		fmt.Println(mp.Details[i].FrontTitle)
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
 		if !mp.Details[i].Platform {
-			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
-			fmt.Println(string(result), code)
+			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
 			if string(result) == mp.Details[i].HealthExpResp {
 				mp.Details[i].HealthPing = "OK"
 			}
@@ -107,8 +122,16 @@ func read(mp metadata, msg []byte) metadata {
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
-			fmt.Println(result, code)
+			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
+			var platform platformStruct
+			json.Unmarshal(result, &platform)
+			for j := range platform.Services {
+
+				parts := strings.Split(platform.Services[j].ServiceID, "@")
+				fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
+				//mp.Details[i].Backend[j].Health
+			}
+
 			//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused
 		}
 	}
