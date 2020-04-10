@@ -149,9 +149,9 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 	} else {
-		
+
 		resp, err := client.Do(req)
-		
+
 		helpers.Check(err, false, "The HTTP response")
 
 		if err != nil {
@@ -174,10 +174,8 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 			_, err = io.Copy(out, resp.Body)
 			helpers.Check(err, false, "The file copy")
 		} else {
-			fmt.Println(resp.Body)
 			data, err := ioutil.ReadAll(resp.Body)
 			helpers.Check(err, false, "Data read")
-			fmt.Println("wat2")
 			return data, statusCode
 		}
 	}

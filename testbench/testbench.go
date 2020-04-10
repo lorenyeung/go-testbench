@@ -97,13 +97,18 @@ func read(mp metadata, msg []byte) metadata {
 		fmt.Println(mp.Details[i].FrontTitle)
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
 		if !mp.Details[i].Platform {
-			auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
+			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
+			fmt.Println(string(result), code)
+			if string(result) == mp.Details[i].HealthExpResp {
+				mp.Details[i].HealthPing = "OK"
+			}
 			status := ping(mp.Details[i].Backend)
 			fmt.Println("testing status:", status)
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
+			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
+			fmt.Println(result, code)
 			//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused
 		}
 	}
@@ -112,18 +117,18 @@ func read(mp metadata, msg []byte) metadata {
 
 func ping(backend []backendJSON) []backendJSON {
 	for key, value := range backend {
-		fmt.Println(backend[key], key, value.Port)
+		//fmt.Println(backend[key], key, value.Port)
 		conn, err := net.Dial("tcp", "localhost:"+value.Port)
 		if err != nil {
 			//err response:dial tcp <host>:<port>: connect: connection refused
-			fmt.Println(err)
+			//fmt.Println(err)
 			backend[key].Health = "DOWN"
 
 		} else {
 			fmt.Println(conn, "OK")
 			backend[key].Health = "OK"
 		}
-		fmt.Println("heatlh:", backend[key].Health)
+		//fmt.Println("heatlh:", backend[key].Health)
 	}
 	return backend
 }

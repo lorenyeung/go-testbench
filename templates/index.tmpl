@@ -38,7 +38,7 @@
                         
                         {{range .art_data}}
                         <li>
-                            {{ if (eq .ID "running" )}}
+                            {{ if (eq .HealthPing "OK" )}}
                             <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.BackTitle}}
                             </div>
                             {{else}}
