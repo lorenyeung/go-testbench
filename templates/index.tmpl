@@ -31,6 +31,57 @@
         <div id ="services" class="col s12">
             <h3>Services</h3>
             <div class="row" id="service_row"></div>
+
+            <div class="card-content grey lighten-4">
+                <div id="test4">
+                    <ul class="collapsible">
+                        
+                        {{range .art_data}}
+                        <li>
+                            {{ if (eq .ID "running" )}}
+                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.BackTitle}}
+                            </div>
+                            {{else}}
+                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.BackTitle}}
+                            </div>
+                            {{end}}
+                            <div class="collapsible-body"><span>
+                                    <table>
+                                        <thead>
+                                        <th>Service</th>
+                                        <th>Port</th>
+                                        <th>Health</th>
+                                        {{range .Backend}}
+                                        <tr>
+                                            <td>{{.Service}}</td>
+                                            <td>{{.Port}} </td>
+                                            <td>{{.Health}}</td>
+                                            </tr>
+                                            {{ end }}
+                                            <tr>
+                                            <p>{{ if (eq .ID "running" )}}
+                                                <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}" href="/authed/stop/{{.ID}}"><i
+                                                        class="material-icons left">delete</i>stop</a>
+                                                <a class="waves-effect waves-light btn-flat btn"><i
+                                                        class="material-icons left">delete</i>restart</a>
+                                                {{else}}
+                                                <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}" href="/authed/start/{{.ID}}"><i
+                                                        class="material-icons left">cloud</i>start</a>
+                                                {{end}}
+
+                                                <a class="waves-effect waves-light btn-flat btn"><i
+                                                        class="material-icons left">delete</i>edit</a>
+                                            </p>
+                                        </tr>
+                                        </table>
+                                        {{.BackContent}}
+                                </span></div>
+                        </li>
+                        {{ end }}
+                    </ul>
+                </div>
+                <div id="test5">Test 2</div>
+                <div id="test6">Test 3</div>
         </div>
 
         <div id ="backend" class="col s12">

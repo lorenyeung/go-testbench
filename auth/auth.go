@@ -4,9 +4,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"go-testbench/dockerapi"
+	"go-testbench/helpers"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -132,4 +137,49 @@ func GetVersions() []string {
 	versions := version{}
 	json.Unmarshal(body, &versions)
 	return versions.Version
+}
+
+//GetRestAPI GET rest APIs response with error handling
+func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath string) ([]byte, int) {
+	client := http.Client{}
+	req, err := http.NewRequest(method, urlInput, nil)
+	if auth {
+		req.SetBasicAuth(userName, apiKey)
+	}
+	if err != nil {
+		fmt.Printf("The HTTP request failed with error %s\n", err)
+	} else {
+		
+		resp, err := client.Do(req)
+		
+		helpers.Check(err, false, "The HTTP response")
+
+		if err != nil {
+			return nil, 0
+		}
+		if resp.StatusCode != 200 {
+			log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
+		}
+		//Mostly for HEAD requests
+		statusCode := resp.StatusCode
+
+		if filepath != "" && method == "GET" {
+			// Create the file
+			out, err := os.Create(filepath)
+			helpers.Check(err, false, "File create")
+			defer out.Close()
+
+			//done := make(chan int64)
+			//go helpers.PrintDownloadPercent(done, filepath, int64(resp.ContentLength))
+			_, err = io.Copy(out, resp.Body)
+			helpers.Check(err, false, "The file copy")
+		} else {
+			fmt.Println(resp.Body)
+			data, err := ioutil.ReadAll(resp.Body)
+			helpers.Check(err, false, "Data read")
+			fmt.Println("wat2")
+			return data, statusCode
+		}
+	}
+	return nil, 0
 }

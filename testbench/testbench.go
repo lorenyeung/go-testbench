@@ -34,50 +34,21 @@ type metadataJSON struct {
 	BackContent   string        `json:"backContent"`
 	Platform      bool          `json:"platform"`
 	PlatformHc    string        `json:"platformHc"`
+	HealthPing    string        `json:"healthPing"`
 }
 
 type backendJSON struct {
 	Service string `json:"service"`
 	Port    string `json:"port"`
 	Jfid    string `json:"jfid"`
+	Health  string `json:"health"`
 }
 
 func main() {
 	user, err := user.Current()
 	auth.CheckErr(err)
-
-	router := gin.Default()
-	router.LoadHTMLGlob(user.HomeDir + "/go/src/go-testbench/templates/*")
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	router.GET("/containers", func(c *gin.Context) {
-		containers := dockerapi.ListRunningContainers()
-		c.JSON(200, gin.H{
-			"containers": containers,
-		})
-	})
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "lorenTestbench",
-		})
-	})
-
-	router.GET("/login", auth.LoginHandler)
-	read()
-	router.Run("0.0.0.0:8080") // listen and serve on 0.0.0.0:8080
-}
-
-func read() {
-
-	usr, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
 	configFolder := "/.lorenygo/testBench/"
-	configPath := usr.HomeDir + configFolder
+	configPath := user.HomeDir + configFolder
 
 	log.Println("Checking existence of home folder")
 
@@ -93,34 +64,66 @@ func read() {
 	var mp metadata
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
-	fmt.Println(len(mp.Details))
+
+	router := gin.Default()
+	router.LoadHTMLGlob(user.HomeDir + "/go/src/go-testbench/templates/*")
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
+	router.GET("/containers", func(c *gin.Context) {
+		containers := dockerapi.ListRunningContainers()
+		c.JSON(200, gin.H{
+			"containers": containers,
+		})
+	})
+	check := read(mp, msg)
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+			"title": "lorenTestbench", "art_data": check.Details})
+	})
+
+	router.GET("/login", auth.LoginHandler)
+
+	router.Run("0.0.0.0:8080") // listen and serve on 0.0.0.0:8080
+}
+
+func read(mp metadata, msg []byte) metadata {
+	// Decode JSON into our map
+	json.Unmarshal([]byte(msg), &mp)
+
 	for i := range mp.Details {
 		fmt.Println(mp.Details[i].FrontTitle)
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
 		if !mp.Details[i].Platform {
-			resp, err := http.Get(mp.Details[i].URL + mp.Details[i].HealthCheck)
-			fmt.Println(resp, err)
-			ping(mp.Details[i].Backend)
+			auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
+			status := ping(mp.Details[i].Backend)
+			fmt.Println("testing status:", status)
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			resp, err := http.Get(mp.Details[i].URL + mp.Details[i].PlatformHc)
+			auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
 			//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused
-			fmt.Println(resp, err)
 		}
-
 	}
+	return mp
 }
 
-func ping(backend []backendJSON) {
+func ping(backend []backendJSON) []backendJSON {
 	for key, value := range backend {
 		fmt.Println(backend[key], key, value.Port)
 		conn, err := net.Dial("tcp", "localhost:"+value.Port)
 		if err != nil {
 			//err response:dial tcp <host>:<port>: connect: connection refused
 			fmt.Println(err)
+			backend[key].Health = "DOWN"
+
 		} else {
 			fmt.Println(conn, "OK")
+			backend[key].Health = "OK"
 		}
+		fmt.Println("heatlh:", backend[key].Health)
 	}
+	return backend
 }
