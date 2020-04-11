@@ -21,21 +21,19 @@ type metadata struct {
 	Details []metadataJSON `json:"data"`
 }
 type metadataJSON struct {
-	ID            string        `json:"id"`
-	Backend       []backendJSON `json:"backend"`
-	VersionCall   string        `json:"versionCall"`
-	VersionSpec   string        `json:"versionSpec"`
-	URL           string        `json:"url"`
-	HealthCheck   string        `json:"healthcheck"`
-	HealthExpResp string        `json:"healthExpResp"`
-	ImageSrc      string        `json:"imageSrc"`
-	FrontTitle    string        `json:"frontTitle"`
-	FrontLink     string        `json:"frontLink"`
-	BackTitle     string        `json:"backTitle"`
-	BackContent   string        `json:"backContent"`
-	Platform      bool          `json:"platform"`
-	PlatformHc    string        `json:"platformHc"`
-	HealthPing    string        `json:"healthPing"`
+	ID              string        `json:"id"`
+	Backend         []backendJSON `json:"backend"`
+	VersionCall     string        `json:"versionCall"`
+	VersionSpec     string        `json:"versionSpec"`
+	URL             string        `json:"url"`
+	HealthcheckCall string        `json:"healthcheckCall"`
+	HealthExpResp   string        `json:"healthExpResp"`
+	ImageSrc        string        `json:"imageSrc"`
+	Title           string        `json:"title"`
+	Content         string        `json:"content"`
+	Platform        bool          `json:"platform"`
+	PlatformHcCall  string        `json:"platformHcCall"`
+	HealthPing      string        `json:"healthPing"`
 }
 
 type backendJSON struct {
@@ -94,10 +92,18 @@ func main() {
 			"containers": containers,
 		})
 	})
+
+	var containersList []map[string]interface{}
+	containerRaw, _ := json.Marshal(dockerapi.ListRunningContainers())
+	err2 := json.Unmarshal([]byte(containerRaw), &containersList)
+	if err2 != nil {
+		panic(err)
+	}
+
 	check := read(mp, msg)
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "lorenTestbench", "art_data": check.Details})
+			"title": "lorenTestbench", "art_data": check.Details, "containers": containersList})
 	})
 
 	router.GET("/login", auth.LoginHandler)
@@ -110,11 +116,12 @@ func read(mp metadata, msg []byte) metadata {
 	json.Unmarshal([]byte(msg), &mp)
 
 	for i := range mp.Details {
-		fmt.Println(mp.Details[i].FrontTitle)
+		fmt.Println(mp.Details[i].Title)
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
 		if !mp.Details[i].Platform {
-			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthCheck, "", "", "")
-			if string(result) == mp.Details[i].HealthExpResp {
+			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthcheckCall, "", "", "")
+			fmt.Println("health result:", string(result), code)
+			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
 				mp.Details[i].HealthPing = "OK"
 			}
 			status := ping(mp.Details[i].Backend)
@@ -122,14 +129,25 @@ func read(mp metadata, msg []byte) metadata {
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHc, "", "", "")
+			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHcCall, "", "", "")
 			var platform platformStruct
 			json.Unmarshal(result, &platform)
+
+			// overall health check via router
+			if platform.Router.Message == "OK" {
+				mp.Details[i].HealthPing = "OK"
+			}
+			//Backend[0] is always router
+			mp.Details[i].Backend[0].Health = platform.Router.Message
+
 			for j := range platform.Services {
 
 				parts := strings.Split(platform.Services[j].ServiceID, "@")
+				//+1 is extremely hacky, should be index matching
 				fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
-				//mp.Details[i].Backend[j].Health
+				if parts[0] == mp.Details[i].Backend[j+1].Jfid {
+					mp.Details[i].Backend[j+1].Health = platform.Services[j].Message
+				}
 			}
 
 			//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused

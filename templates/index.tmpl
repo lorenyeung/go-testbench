@@ -3,95 +3,123 @@
 <body>
     {{ template "navbar" . }}
     <div class="container">
-    <style>
-        body {
-            background-color:#eee;
-        }
-    </style>
-    <head>
-        <link rel="icon" href="images/jfrog-glasses.png">
-        <title>Loren's Testbench</title>
-        <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-        <base target="_top">
-    </head>
-<body>
-	
-    <ul class="sidenav" id="mobile-demo">
-        <li><a href="http://materializecss.com/">CSS</a></li>
-    </ul>
+        <style>
+            body {
+                background-color: #eee;
+            }
+        </style>
 
-	<blockquote>"If you're going through hell, keep going."</blockquote>
-        <div id ="services" class="col s12">
+        <head>
+            <link rel="icon" href="images/jfrog-glasses.png">
+            <title>Loren's Testbench</title>
+            <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
+            <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+            <base target="_top">
+        </head>
+        <ul class="sidenav" id="mobile-demo">
+            <li><a href="http://materializecss.com/">CSS</a></li>
+        </ul>
+        <blockquote>"If you're going through hell, keep going."</blockquote>
+        <div id="services" class="col s12">
             <h3>Services</h3>
             <div class="row" id="service_row"></div>
-
             <div class="card-content grey lighten-4">
                 <div id="test4">
                     <ul class="collapsible">
-                        
+
                         {{range .art_data}}
                         <li>
                             {{ if (eq .HealthPing "OK" )}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.BackTitle}}
-                            </div>
+                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.Title}}</div>
                             {{else}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.BackTitle}}
-                            </div>
+                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.Title}}</div>
                             {{end}}
-                            <div class="collapsible-body"><span>
+                            <div class="collapsible-body">
+                                <span>
                                     <table>
                                         <thead>
-                                        <th>Service</th>
-                                        <th>Port</th>
-                                        <th>Health</th>
-                                        {{range .Backend}}
-                                        <tr>
-                                            <td>{{.Service}}</td>
-                                            <td>{{.Port}} </td>
-                                            <td>{{.Health}}</td>
+                                            <th>Service</th>
+                                            <th>Port</th>
+                                            <th>Health</th>
+                                            {{range .Backend}}
+                                            <tr>
+                                                <td>{{.Service}}</td>
+                                                <td>{{.Port}} </td>
+                                                <td>{{.Health}}</td>
                                             </tr>
                                             {{ end }}
                                             <tr>
-                                            <p>{{ if (eq .ID "running" )}}
-                                                <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}" href="/authed/stop/{{.ID}}"><i
-                                                        class="material-icons left">delete</i>stop</a>
-                                                <a class="waves-effect waves-light btn-flat btn"><i
-                                                        class="material-icons left">delete</i>restart</a>
-                                                {{else}}
-                                                <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}" href="/authed/start/{{.ID}}"><i
-                                                        class="material-icons left">cloud</i>start</a>
-                                                {{end}}
-
-                                                <a class="waves-effect waves-light btn-flat btn"><i
-                                                        class="material-icons left">delete</i>edit</a>
-                                            </p>
-                                        </tr>
-                                        </table>
-                                        {{.BackContent}}
+                                                <p>
+                                                    {{ if (eq .HealthPing "OK" )}}
+                                                    <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}"
+                                                        href="/authed/stop/{{.ID}}"><i
+                                                            class="material-icons left">delete</i>stop</a>
+                                                    <a class="waves-effect waves-light right-align btn-small btn-flat"
+                                                        id="{{.ID}}" href="{{.URL}}">GO</a>
+                                                    {{else}}
+                                                    <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}"
+                                                        href="/authed/start/{{.ID}}"><i
+                                                            class="material-icons left">cloud</i>start</a>
+                                                    {{end}}
+                                                    <a class="waves-effect waves-light btn-flat btn"><i
+                                                            class="material-icons left">delete</i>restart</a>
+                                                </p>
+                                            </tr>
+                                    </table>
+                                    {{.Content}}
                                 </span></div>
                         </li>
                         {{ end }}
                     </ul>
                 </div>
-                <div id="test5">Test 2</div>
-                <div id="test6">Test 3</div>
+            </div>
         </div>
-
-        <div id ="backend" class="col s12">
+        <div id="backend" class="col s12">
             <h3>Backend</h3>
-                <ul id="backend_row" class="collapsible"></ul>
-                <h1> hello </h1>
+            <div class="card-content grey lighten-4">
+                <div id="test4">
+                    <ul class="collapsible">
+                        {{range .containers}}
+                        <li>
+                            {{ if (eq .State "running" )}}
+                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.Names}}
+                            </div>
+                            {{else}}
+                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.Names}}
+                            </div>
+                            {{end}}
+                            <div class="collapsible-body"><span>
+                                    <tbody>
+                                        <tr>
+                                            <td>{{.Image}}</td>
+                                            <td>{{range .Ports}} {{.PublicPort}}:{{.PrivatePort}} {{ end }}</td>
+                                            <td>{{.State}}, {{.Status}}</td>
+                                            <p>{{ if (eq .State "running" )}}
+                                                <a class="waves-effect waves-light btn-flat btn" id="{{.Id}}"
+                                                    href="/authed/stop/{{.Id}}"><i
+                                                        class="material-icons left">delete</i>stop</a>
+                                                <a class="waves-effect waves-light btn-flat btn"><i
+                                                        class="material-icons left">delete</i>restart</a>
+                                                {{else}}
+                                                <a class="waves-effect waves-light btn-flat btn" id="{{.Id}}"
+                                                    href="/authed/start/{{.Id}}"><i
+                                                        class="material-icons left">cloud</i>start</a>
+                                                {{end}}
+                                            </p>
+                                        </tr>
+                                    </tbody>
+                                </span></div>
+                        </li>
+                        {{ end }}
+                    </ul>
+                </div>
+            </div>
+
+            <div id="logs" class="col s12">
+                <h3>Logs</h3>
+            </div>
         </div>
-        <div id = "logs" class="col s12">
-            <h3>Logs</h3>
-        </div>
-    </div>
-</body>
-
-
-
-    {{ template "footer" }}
+        {{ template "footer" }}
 </body>
 
 </html>
