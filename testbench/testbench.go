@@ -93,6 +93,7 @@ func main() {
 		})
 	})
 
+	// backend listing for docker containers
 	var containersList []map[string]interface{}
 	containerRaw, _ := json.Marshal(dockerapi.ListRunningContainers())
 	err2 := json.Unmarshal([]byte(containerRaw), &containersList)
@@ -105,12 +106,10 @@ func main() {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "lorenTestbench", "art_data": check.Details, "containers": containersList})
 	})
-
-	router.GET("/login", auth.LoginHandler)
-
 	router.Run("0.0.0.0:8080") // listen and serve on 0.0.0.0:8080
 }
 
+// read data.json into useable information, update healthchecks
 func read(mp metadata, msg []byte) metadata {
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
@@ -156,6 +155,7 @@ func read(mp metadata, msg []byte) metadata {
 	return mp
 }
 
+//ping all backend services via tcp
 func ping(backend []backendJSON) []backendJSON {
 	for key, value := range backend {
 		//fmt.Println(backend[key], key, value.Port)

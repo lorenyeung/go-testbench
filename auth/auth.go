@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -149,9 +150,16 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 	} else {
+		c := make(chan struct{})
+		timer := time.AfterFunc(5*time.Second, func() {
+			close(c)
+		})
+		req.Cancel = c
 
+		fmt.Println("before do")
 		resp, err := client.Do(req)
 
+		fmt.Println("after do", timer)
 		helpers.Check(err, false, "The HTTP response")
 
 		if err != nil {
@@ -174,6 +182,7 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 			_, err = io.Copy(out, resp.Body)
 			helpers.Check(err, false, "The file copy")
 		} else {
+			fmt.Println("testing failure")
 			data, err := ioutil.ReadAll(resp.Body)
 			helpers.Check(err, false, "Data read")
 			return data, statusCode
