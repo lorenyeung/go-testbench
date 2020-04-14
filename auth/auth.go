@@ -152,7 +152,7 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 	} else {
 		//timeout of 5 seconds for client.do
 		c := make(chan struct{})
-		time.AfterFunc(5*time.Second, func() {
+		time.AfterFunc(2*time.Second, func() {
 			close(c)
 		})
 		req.Cancel = c

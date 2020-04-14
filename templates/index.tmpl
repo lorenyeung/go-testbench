@@ -5,6 +5,7 @@
         <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <base target="_top">
+
         <script>
             url = 'ws://localhost:8080/ws';
             c = new WebSocket(url);
@@ -14,21 +15,25 @@
                 c.send("sendImageUpdates");
             };
             c.onmessage = function(msg){
-                console.log(msg);
-                query = document.getElementById("helloServices").innerHTML;
-    console.log("Query value -> " + query +Date());
-            var update = "<ul class=\"collapsible\">"+
-                for (var i = 0; i < msg.data.length();i++) {
-                    +"<li>"+
-                        if (msg.data[i].HealthPing == "OK") {
-                            console.log("OK")
-                        }
-                        +"</li>"
-                    }
-                    +"</ul>";
+                console.log("update recieved at "+Date()+ JSON.parse(msg.data));
+                //document.getElementById("test5").innerHTML = "";
+                var ul = document.getElementById("test5");
                 
-            document.getElementById("helloServices").innerHTML = msg.data;
-            }
+
+                var fragment = document.createDocumentFragment();
+                var json = JSON.parse(msg.data)            
+                for (var i =0; i < json.data.length; i++) {
+                    if (json.data[i].healthPing == "OK") {
+
+                    } else {
+
+                    }
+                    for (var j = 0; j < json.data[i].backend.length; j++) {
+                        document.getElementById(json.data[i].id+json.data[i].backend[j].service).innerHTML = json.data[i].backend[j].health
+
+                    }
+                }
+        }
             c.onclose = function() {
                 c = null;
             }
@@ -55,14 +60,14 @@
             <div class="row" id="service_row"></div>
             <div class="card-content grey lighten-4">
                 <div id="test4">
-                    <ul class="collapsible">
+                    <ul class="collapsible popout" id="test5">
 
                         {{range .art_data}}
                         <li>
                             {{ if (eq .HealthPing "OK" )}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons">cloud_done</i>{{.Title}}</div>
                             {{else}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons">cloud_off</i>{{.Title}}</div>
                             {{end}}
                             <div class="collapsible-body">
                                 <span>
@@ -71,11 +76,12 @@
                                             <th>Service</th>
                                             <th>Port</th>
                                             <th>Health</th>
+                                            {{$id := .ID}}
                                             {{range .Backend}}
                                             <tr>
                                                 <td>{{.Service}}</td>
                                                 <td>{{.Port}} </td>
-                                                <td>{{.Health}}</td>
+                                                <td id={{$id}}{{.Service}}>{{.Health}}</td>
                                             </tr>
                                             {{ end }}
                                             <tr>

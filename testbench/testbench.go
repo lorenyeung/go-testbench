@@ -138,7 +138,9 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 	}
 	defer conn.Close()
 	//return init state on first call
-	conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%v", initCheck.Details)))
+	initCheckJSON, _ := json.Marshal(*initCheck)
+	conn.WriteMessage(websocket.TextMessage, initCheckJSON)
+	fmt.Println(*initCheck)
 	t, msg2, errRead := conn.ReadMessage()
 	for {
 		//keepalive
@@ -164,7 +166,9 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 
 		if !reflect.DeepEqual(*initCheck, check) {
 			fmt.Println("it doesnt ----------------------------------------------------------------------------------------- it doesnt")
-			err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%v", check.Details)))
+			checkJSON, _ := json.Marshal(check)
+			err := conn.WriteMessage(websocket.TextMessage, checkJSON)
+
 			initCheck = &check
 			if err != nil {
 				break
