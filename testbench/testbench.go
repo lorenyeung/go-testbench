@@ -12,9 +12,12 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 type metadata struct {
@@ -60,6 +63,8 @@ type platformServices struct {
 }
 
 func main() {
+	healthcheckHost := "loren.jfrog.team:"
+
 	user, err := user.Current()
 	auth.CheckErr(err)
 	configFolder := "/.lorenygo/testBench/"
@@ -101,51 +106,129 @@ func main() {
 		panic(err)
 	}
 
-	check := read(mp, msg)
+	check := read(mp, msg, healthcheckHost)
+	var checkPtr *metadata = &check
+
+	//websocket
+	//var clients = make(map[*websocket.Conn]bool) // connected clients
+	//var broadcast = make(chan check.Details)     //broadcast channel
+
 	router.GET("/", func(c *gin.Context) {
+		//check := read(mp, msg, healthcheckHost)
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "lorenTestbench", "art_data": check.Details, "containers": containersList})
+	})
+
+	router.GET("/ws", func(c *gin.Context) {
+		wshandler(c.Writer, c.Request, msg, healthcheckHost, checkPtr)
 	})
 	router.Run("0.0.0.0:8080") // listen and serve on 0.0.0.0:8080
 }
 
+var wsupgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHost string, initCheck *metadata) {
+	conn, err := wsupgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println("Failed to upgrade ws: %+v", err)
+		return
+	}
+	defer conn.Close()
+	//return init state on first call
+	conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%v", initCheck.Details)))
+	t, msg2, errRead := conn.ReadMessage()
+	for {
+		//keepalive
+		err := conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
+		if err != nil {
+			return
+		}
+		if errRead != nil {
+			break
+		}
+		fmt.Println(t, string(msg2))
+
+		//need to store previous send, and if there is a change, then write to socket
+		var mp2 metadata
+		// Decode JSON into our map
+		json.Unmarshal([]byte(msg), &mp2)
+		check := read(mp2, msg, healthcheckHost)
+		if reflect.DeepEqual([]byte(fmt.Sprintf("%v", initCheck.Details)), []byte(fmt.Sprintf("%v", check.Details))) {
+			fmt.Println("it matches ---- check:", check.Details[3].Backend[4].Health, " init check:", initCheck.Details[3].Backend[4].Health)
+		} else {
+			fmt.Println("it doesn't ---- check:", check.Details[3].Backend[4].Health, " init check:", initCheck.Details[3].Backend[4].Health)
+		}
+
+		if !reflect.DeepEqual(*initCheck, check) {
+			fmt.Println("it doesnt ----------------------------------------------------------------------------------------- it doesnt")
+			err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%v", check.Details)))
+			initCheck = &check
+			if err != nil {
+				break
+			}
+		}
+		time.Sleep(3 * time.Second)
+	}
+}
+
 // read data.json into useable information, update healthchecks
-func read(mp metadata, msg []byte) metadata {
+func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
 
 	for i := range mp.Details {
-		fmt.Println(mp.Details[i].Title)
+		//fmt.Println(mp.Details[i].Title)
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
+		partsPort := strings.Split(mp.Details[i].URL, ":")
 		if !mp.Details[i].Platform {
-			result, code := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].HealthcheckCall, "", "", "")
-			fmt.Println("health result:", string(result), code)
+			result, code := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
 			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
 				mp.Details[i].HealthPing = "OK"
 			}
-			status := ping(mp.Details[i].Backend)
-			fmt.Println("testing status:", status)
+			ping(mp.Details[i].Backend, healthcheckHost)
+			//fmt.Println("testing status:", status)
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			result, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].PlatformHcCall, "", "", "")
+			result, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
 			var platform platformStruct
 			json.Unmarshal(result, &platform)
 
 			// overall health check via router
-			if platform.Router.Message == "OK" {
+			if platform.Router.State == "HEALTHY" {
 				mp.Details[i].HealthPing = "OK"
 			}
 			//Backend[0] is always router
-			mp.Details[i].Backend[0].Health = platform.Router.Message
+			mp.Details[i].Backend[0].Health = platform.Router.State
 
 			for j := range platform.Services {
 
 				parts := strings.Split(platform.Services[j].ServiceID, "@")
 				//+1 is extremely hacky, should be index matching
-				fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
-				if parts[0] == mp.Details[i].Backend[j+1].Jfid {
+				//fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
+				if parts[0] == mp.Details[i].Backend[j+1].Jfid && mp.Details[i].Backend[j+1].Jfid != "" {
 					mp.Details[i].Backend[j+1].Health = platform.Services[j].Message
+				}
+			}
+
+			// non platform services check
+			//fmt.Println("non platform check")
+			for k := range mp.Details[i].Backend {
+				if mp.Details[i].Backend[k].Jfid == "" {
+					_, err := net.Dial("tcp", healthcheckHost+mp.Details[i].Backend[k].Port)
+					//fmt.Println(mp.Details[i].Backend[k].Service)
+					if err != nil {
+						//err response:dial tcp <host>:<port>: connect: connection refused
+						//fmt.Println(err)
+						mp.Details[i].Backend[k].Health = "DOWN"
+
+					} else {
+						//fmt.Println(conn, "OK")
+						mp.Details[i].Backend[k].Health = "OK"
+					}
 				}
 			}
 
@@ -156,17 +239,17 @@ func read(mp metadata, msg []byte) metadata {
 }
 
 //ping all backend services via tcp
-func ping(backend []backendJSON) []backendJSON {
+func ping(backend []backendJSON, healthcheckHost string) []backendJSON {
 	for key, value := range backend {
 		//fmt.Println(backend[key], key, value.Port)
-		conn, err := net.Dial("tcp", "localhost:"+value.Port)
+		_, err := net.Dial("tcp", healthcheckHost+value.Port)
 		if err != nil {
 			//err response:dial tcp <host>:<port>: connect: connection refused
 			//fmt.Println(err)
 			backend[key].Health = "DOWN"
 
 		} else {
-			fmt.Println(conn, "OK")
+			//fmt.Println(conn, "OK")
 			backend[key].Health = "OK"
 		}
 		//fmt.Println("heatlh:", backend[key].Health)

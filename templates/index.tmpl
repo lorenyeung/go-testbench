@@ -1,4 +1,40 @@
 <html>
+    <head>
+        <link rel="icon" href="images/jfrog-glasses.png">
+        <title>Loren's Testbench</title>
+        <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <base target="_top">
+        <script>
+            url = 'ws://localhost:8080/ws';
+            c = new WebSocket(url);
+            c.onopen = function() {
+                console.log("Primary Socket Connected.");
+                connectedPrimary = true;
+                c.send("sendImageUpdates");
+            };
+            c.onmessage = function(msg){
+                console.log(msg);
+                query = document.getElementById("helloServices").innerHTML;
+    console.log("Query value -> " + query +Date());
+            var update = "<ul class=\"collapsible\">"+
+                for (var i = 0; i < msg.data.length();i++) {
+                    +"<li>"+
+                        if (msg.data[i].HealthPing == "OK") {
+                            console.log("OK")
+                        }
+                        +"</li>"
+                    }
+                    +"</ul>";
+                
+            document.getElementById("helloServices").innerHTML = msg.data;
+            }
+            c.onclose = function() {
+                c = null;
+            }
+            
+        </script>
+    </head>
 
 <body>
     {{ template "navbar" . }}
@@ -9,19 +45,13 @@
             }
         </style>
 
-        <head>
-            <link rel="icon" href="images/jfrog-glasses.png">
-            <title>Loren's Testbench</title>
-            <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
-            <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-            <base target="_top">
-        </head>
+
         <ul class="sidenav" id="mobile-demo">
             <li><a href="http://materializecss.com/">CSS</a></li>
         </ul>
         <blockquote>"If you're going through hell, keep going."</blockquote>
         <div id="services" class="col s12">
-            <h3>Services</h3>
+            <h3 id = "helloServices">Services</h3>
             <div class="row" id="service_row"></div>
             <div class="card-content grey lighten-4">
                 <div id="test4">
