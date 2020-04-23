@@ -65,24 +65,28 @@ type platformServices struct {
 
 func main() {
 
-	var healthcheckHostVar, portVar string
-	flag.StringVar(&portVar, "port", "8080", "Port")
-	flag.StringVar(&healthcheckHostVar, "healthcheckhost", "loren.jfrog.team:", "healthcheck Host")
-	flag.Parse()
-
 	user, err := user.Current()
 	auth.CheckErr(err)
-	configFolder := "/.lorenygo/testBench/"
-	configPath := user.HomeDir + configFolder
 
-	log.Println("Checking existence of home folder")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Println("No config folder found")
-		err = os.MkdirAll(configPath, 0700)
-		helpers.Check(err, true, "Generating "+configPath+" directory")
+	configFolder := "/.lorenygo/testBench/"
+	configFile := "data.json"
+
+	var healthcheckHostVar, portVar, dataFileVar string
+	flag.StringVar(&portVar, "port", "8080", "Port")
+	flag.StringVar(&healthcheckHostVar, "healthcheckhost", "loren.jfrog.team:", "healthcheck Host")
+	flag.StringVar(&dataFileVar, "data", user.HomeDir+configFolder+configFile, "Path to JSON file")
+	flag.Parse()
+
+	if strings.Contains(dataFileVar, configFolder) {
+		log.Println("Checking existence of config folder")
+		if _, err := os.Stat(configFolder); os.IsNotExist(err) {
+			log.Println("No config folder found")
+			err = os.MkdirAll(configFolder, 0700)
+			helpers.Check(err, true, "Generating "+configFolder+" directory")
+		}
 	}
 
-	file, err := os.Open(configPath + "data.json")
+	file, err := os.Open(dataFileVar + configFile)
 	helpers.Check(err, true, "data JSON read")
 	msg, _ := ioutil.ReadAll(file)
 	var mp metadata
@@ -90,7 +94,7 @@ func main() {
 	json.Unmarshal([]byte(msg), &mp)
 
 	router := gin.Default()
-	router.LoadHTMLGlob(user.HomeDir + "/go/src/go-testbench/templates/*")
+	router.LoadHTMLGlob(os.Getenv("GOPATH") + "/src/go-testbench/templates/*")
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
