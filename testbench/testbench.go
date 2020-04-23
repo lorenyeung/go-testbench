@@ -71,9 +71,10 @@ func main() {
 	configFolder := "/.lorenygo/testBench/"
 	configFile := "data.json"
 
-	var healthcheckHostVar, portVar, dataFileVar string
+	var healthcheckHostVar, portVar, dataFileVar, websocketHostVar string
 	flag.StringVar(&portVar, "port", "8080", "Port")
-	flag.StringVar(&healthcheckHostVar, "healthcheckhost", "loren.jfrog.team:", "healthcheck Host")
+	flag.StringVar(&healthcheckHostVar, "healthcheckhost", "loren.jfrog.team", "healthcheck Host")
+	flag.StringVar(&websocketHostVar, "websockethost", "loren.jfrog.team", "websocket Host")
 	flag.StringVar(&dataFileVar, "data", user.HomeDir+configFolder+configFile, "Path to JSON file")
 	flag.Parse()
 
@@ -115,7 +116,7 @@ func main() {
 		panic(err)
 	}
 
-	check := read(mp, msg, healthcheckHostVar)
+	check := read(mp, msg, healthcheckHostVar+":")
 	var checkPtr *metadata = &check
 
 	//websocket
@@ -129,7 +130,7 @@ func main() {
 	})
 
 	router.GET("/ws", func(c *gin.Context) {
-		wshandler(c.Writer, c.Request, msg, healthcheckHostVar, checkPtr)
+		wshandler(c.Writer, c.Request, msg, healthcheckHostVar+":", checkPtr)
 	})
 	router.Run("0.0.0.0:" + portVar) // listen and serve on 0.0.0.0:8080
 }
