@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"go-testbench/auth"
 	"go-testbench/dockerapi"
@@ -63,7 +64,11 @@ type platformServices struct {
 }
 
 func main() {
-	healthcheckHost := "loren.jfrog.team:"
+
+	var healthcheckHostVar, portVar string
+	flag.StringVar(&portVar, "port", "8080", "Port")
+	flag.StringVar(&healthcheckHostVar, "healthcheckhost", "loren.jfrog.team:", "healthcheck Host")
+	flag.Parse()
 
 	user, err := user.Current()
 	auth.CheckErr(err)
@@ -106,7 +111,7 @@ func main() {
 		panic(err)
 	}
 
-	check := read(mp, msg, healthcheckHost)
+	check := read(mp, msg, healthcheckHostVar)
 	var checkPtr *metadata = &check
 
 	//websocket
@@ -120,9 +125,9 @@ func main() {
 	})
 
 	router.GET("/ws", func(c *gin.Context) {
-		wshandler(c.Writer, c.Request, msg, healthcheckHost, checkPtr)
+		wshandler(c.Writer, c.Request, msg, healthcheckHostVar, checkPtr)
 	})
-	router.Run("0.0.0.0:8080") // listen and serve on 0.0.0.0:8080
+	router.Run("0.0.0.0:" + portVar) // listen and serve on 0.0.0.0:8080
 }
 
 var wsupgrader = websocket.Upgrader{

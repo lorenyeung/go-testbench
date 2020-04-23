@@ -65,9 +65,9 @@
                         {{range .art_data}}
                         <li>
                             {{ if (eq .HealthPing "OK" )}}
-                            <div class="collapsible-header" id={{.ID}}><i class="material-icons">cloud_done</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons green-text">cloud_done</i>{{.Title}}</div>
                             {{else}}
-                            <div class="collapsible-header" id={{.ID}}><i class="material-icons">cloud_off</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons red-text">cloud_off</i>{{.Title}}</div>
                             {{end}}
                             <div class="collapsible-body">
                                 <span>
@@ -114,14 +114,14 @@
             <h3>Backend Docker Containers</h3>
             <div class="card-content grey lighten-4">
                 <div id="test4">
-                    <ul class="collapsible">
+                    <ul class="collapsible popout">
                         {{range .containers}}
                         <li>
                             {{ if (eq .State "running" )}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_done</i>{{.Names}}
+                            <div class="collapsible-header"><i class="material-icons green-text">cloud_done</i>{{.Names}}
                             </div>
                             {{else}}
-                            <div class="collapsible-header"><i class="material-icons">cloud_off</i>{{.Names}}
+                            <div class="collapsible-header"><i class="material-icons red-text">cloud_off</i>{{.Names}}
                             </div>
                             {{end}}
                             <div class="collapsible-body"><span>
