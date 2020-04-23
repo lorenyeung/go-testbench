@@ -130,7 +130,7 @@ func main() {
 	})
 
 	router.GET("/ws", func(c *gin.Context) {
-		wshandler(c.Writer, c.Request, msg, healthcheckHostVar+":", checkPtr)
+		wshandler(c.Writer, c.Request, msg, websocketHostVar+":", checkPtr)
 	})
 	router.Run("0.0.0.0:" + portVar) // listen and serve on 0.0.0.0:8080
 }
