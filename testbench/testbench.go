@@ -79,14 +79,14 @@ func main() {
 
 	if strings.Contains(dataFileVar, configFolder) {
 		log.Println("Checking existence of config folder")
-		if _, err := os.Stat(configFolder); os.IsNotExist(err) {
+		if _, err := os.Stat(user.HomeDir + configFolder); os.IsNotExist(err) {
 			log.Println("No config folder found")
-			err = os.MkdirAll(configFolder, 0700)
-			helpers.Check(err, true, "Generating "+configFolder+" directory")
+			err = os.MkdirAll(user.HomeDir+configFolder, 0700)
+			helpers.Check(err, true, "Generating "+user.HomeDir+configFolder+" directory")
 		}
 	}
 
-	file, err := os.Open(dataFileVar + configFile)
+	file, err := os.Open(dataFileVar)
 	helpers.Check(err, true, "data JSON read")
 	msg, _ := ioutil.ReadAll(file)
 	var mp metadata
