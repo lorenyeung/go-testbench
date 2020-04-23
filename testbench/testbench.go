@@ -126,7 +126,7 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		//check := read(mp, msg, healthcheckHost)
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "lorenTestbench", "art_data": check.Details, "containers": containersList})
+			"title": "lorenTestbench", "art_data": check.Details, "containers": containersList, "websocket": websocketHostVar + ":" + portVar})
 	})
 
 	router.GET("/ws", func(c *gin.Context) {
