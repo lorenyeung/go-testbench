@@ -163,7 +163,8 @@ func main() {
 }
 
 func bashCommandWrapper(cmdString string) string {
-	cmd := exec.Command(cmdString)
+	command := strings.Split(cmdString, " ")
+	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
@@ -193,7 +194,6 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 	//return init state on first call
 	initCheckJSON, _ := json.Marshal(*initCheck)
 	conn.WriteMessage(websocket.TextMessage, initCheckJSON)
-	fmt.Println(*initCheck)
 	t, msg2, errRead := conn.ReadMessage()
 	for {
 		//keepalive
@@ -244,7 +244,11 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 			result, code := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
 			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
 				mp.Details[i].HealthPing = "OK"
+			} else {
+				fmt.Println(string(result), mp.Details[i].URL)
+				mp.Details[i].HealthPing = "DOWN"
 			}
+
 			ping(mp.Details[i].Backend, healthcheckHost)
 			//fmt.Println("testing status:", status)
 		}

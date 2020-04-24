@@ -2,7 +2,7 @@
 
 <head>
     <link rel="icon" href="images/jfrog-glasses.png">
-    <title>Loren's Testbench</title>
+    <title>LorenyTestbench</title>
     <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <base target="_top">
@@ -19,7 +19,7 @@
             c.send("sendImageUpdates");
         };
         c.onmessage = function (msg) {
-            console.log("update recieved at " + Date() + JSON.parse(msg.data));
+            console.log("update recieved at " + Date() + msg.data);
             //document.getElementById("test5").innerHTML = "";
             var ul = document.getElementById("test5");
 
@@ -27,10 +27,30 @@
             var fragment = document.createDocumentFragment();
             var json = JSON.parse(msg.data)
             for (var i = 0; i < json.data.length; i++) {
+                var healthIconId = json.data[i].id + "_health_icon"
                 if (json.data[i].healthPing == "OK") {
-
+                    console.log("service up", json.data[i].id)
+                    document.getElementById(healthIconId).innerHTML = "cloud_done"
+                    if (document.getElementById(healthIconId).classList.contains('red-text')) {
+                        document.getElementById(healthIconId).classList.remove('red-text');
+                    }
+                    document.getElementById(json.data[i].id + "_stop_action").classList.remove('disabled')
+                    document.getElementById(json.data[i].id + "_go_action").classList.remove('disabled')
+                    document.getElementById(json.data[i].id + "_restart_action").classList.remove('disabled')
+                    document.getElementById(json.data[i].id + "_start_action").classList.add('disabled')
+                    document.getElementById(healthIconId).classList.add('green-text');
                 } else {
+                    console.log("service down", json.data[i].id)
+                    document.getElementById(healthIconId).innerHTML = "cloud_off"
+                    if (document.getElementById(healthIconId).classList.contains('green-text')) {
+                        document.getElementById(healthIconId).classList.remove('green-text');
 
+                    }
+                    document.getElementById(json.data[i].id + "_stop_action").classList.add('disabled')
+                    document.getElementById(json.data[i].id + "_go_action").classList.add('disabled')
+                    document.getElementById(json.data[i].id + "_restart_action").classList.add('disabled')
+                    document.getElementById(json.data[i].id + "_start_action").classList.remove('disabled')
+                    document.getElementById(healthIconId).classList.add('red-text');
                 }
                 for (var j = 0; j < json.data[i].backend.length; j++) {
                     document.getElementById(json.data[i].id + json.data[i].backend[j].service).innerHTML = json.data[i].backend[j].health
@@ -42,8 +62,7 @@
             c = null;
         }
 
-        const button = document.getElementById('post-btn');
-
+       // const button = document.getElementById('post-btn');
         //             button.addEventListener('click', async _ => {
         //   try {     
         //     const response = await fetch('yourUrl', {
@@ -62,7 +81,7 @@
         function actionable(msg, msg2) {
             console.log(msg, msg2)
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", 'http://'+host[2]+'/actionable', true);
+            xhr.open("POST", 'http://' + host[2] + '/actionable', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.send(JSON.stringify({
                 first: msg,
@@ -112,11 +131,11 @@
                         {{range .art_data}}
                         <li>
                             {{ if (eq .HealthPing "OK" )}}
-                            <div class="collapsible-header" id={{.ID}}><i
-                                    class="material-icons green-text">cloud_done</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons green-text"
+                                    id="{{.ID}}_health_icon">cloud_done</i>{{.Title}}</div>
                             {{else}}
-                            <div class="collapsible-header" id={{.ID}}><i
-                                    class="material-icons red-text">cloud_off</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i class="material-icons red-text"
+                                    id="{{.ID}}_health_icon">cloud_off</i>{{.Title}}</div>
                             {{end}}
                             <div class="collapsible-body">
                                 <span>
@@ -135,29 +154,30 @@
                                             {{ end }}
                                             <tr>
                                                 <p>
-                                                    {{ if (eq .HealthPing "OK" )}}
-                                                    <a class="waves-effect waves-light btn-flat btn"
+
+                                                    <a class="waves-effect waves-light btn-flat btn disabled"
                                                         id="{{.ID}}_stop_action" onClick="actionable({{.StopCmd}})">
-                                                        <i class="material-icons left">delete</i>
+                                                        <i class="material-icons left">stop</i>
                                                         stop
                                                     </a>
-                                                    <a class="waves-effect waves-light btn-flat btn"
+                                                    <a class="waves-effect waves-light btn-flat btn disabled"
                                                         id="{{.ID}}_restart_action"
                                                         onClick="actionable({{.StopCmd}}, {{.StartCmd}})">
-                                                        <i class="material-icons left">delete</i>
+                                                        <i class="material-icons left">repeat</i>
                                                         restart
                                                     </a>
-                                                    <a class="waves-effect waves-light right-align btn-small btn-flat"
-                                                        id="{{.ID}}" href="{{.URL}}">
+                                                    <a class="waves-effect waves-light right-align btn-small btn-flat disabled"
+                                                        id="{{.ID}}_go_action" href="{{.URL}}">
+                                                        <i class="material-icons left">navigate_next</i>
                                                         GO
                                                     </a>
-                                                    {{else}}
-                                                    <a class="waves-effect waves-light btn-flat btn"
+
+                                                    <a class="waves-effect waves-light btn-flat btn disabled"
                                                         id="{{.ID}}_start_action" onClick="actionable({{.StartCmd}})">
-                                                        <i class="material-icons left">cloud</i>
+                                                        <i class="material-icons left">play_arrow</i>
                                                         start
                                                     </a>
-                                                    {{end}}
+
 
                                                 </p>
                                             </tr>
