@@ -8,6 +8,20 @@
     <base target="_top">
 
     <script>
+        window.addEventListener('load', (event) => {
+            var quotes = ["If you're going through hell, keep going.",
+            "Either you run the day or the day runs you.",
+            "I was born not knowing and have had only a little time to change that here and there.",
+            "People say nothing is impossible, but I do nothing every day."
+            ];
+
+            function getRandomInt(max) {
+                return Math.floor(Math.random() * Math.floor(max));
+            }
+            console.log(document.getElementById("quote"))
+            document.getElementById("quote").innerHTML = quotes[getRandomInt(quotes.length)]
+        })
+
         var href = window.location.href
         var host = href.split("/")
 
@@ -29,7 +43,7 @@
             for (var i = 0; i < json.data.length; i++) {
                 var healthIconId = json.data[i].id + "_health_icon"
                 if (json.data[i].healthPing == "OK") {
-                    console.log("service up", json.data[i].id)
+                    //console.log("service up", json.data[i].id)
                     document.getElementById(healthIconId).innerHTML = "cloud_done"
                     if (document.getElementById(healthIconId).classList.contains('red-text')) {
                         document.getElementById(healthIconId).classList.remove('red-text');
@@ -40,7 +54,7 @@
                     document.getElementById(json.data[i].id + "_start_action").classList.add('disabled')
                     document.getElementById(healthIconId).classList.add('green-text');
                 } else {
-                    console.log("service down", json.data[i].id)
+                    //console.log("service down", json.data[i].id)
                     document.getElementById(healthIconId).innerHTML = "cloud_off"
                     if (document.getElementById(healthIconId).classList.contains('green-text')) {
                         document.getElementById(healthIconId).classList.remove('green-text');
@@ -62,7 +76,7 @@
             c = null;
         }
 
-       // const button = document.getElementById('post-btn');
+        // const button = document.getElementById('post-btn');
         //             button.addEventListener('click', async _ => {
         //   try {     
         //     const response = await fetch('yourUrl', {
@@ -120,7 +134,7 @@
         <ul class="sidenav" id="mobile-demo">
             <li><a href="http://materializecss.com/">CSS</a></li>
         </ul>
-        <blockquote>"If you're going through hell, keep going."</blockquote>
+        <blockquote id="quote"></blockquote>
         <div id="services" class="col s12">
             <h3 id="helloServices">Services</h3>
             <div class="row" id="service_row"></div>

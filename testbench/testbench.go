@@ -245,7 +245,7 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
 				mp.Details[i].HealthPing = "OK"
 			} else {
-				fmt.Println(string(result), mp.Details[i].URL)
+				//fmt.Println(string(result), mp.Details[i].URL)
 				mp.Details[i].HealthPing = "DOWN"
 			}
 
