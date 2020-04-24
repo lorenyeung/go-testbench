@@ -18,7 +18,6 @@
             function getRandomInt(max) {
                 return Math.floor(Math.random() * Math.floor(max));
             }
-            console.log(document.getElementById("quote"))
             document.getElementById("quote").innerHTML = quotes[getRandomInt(quotes.length)]
         })
 
@@ -33,7 +32,7 @@
             c.send("sendImageUpdates");
         };
         c.onmessage = function (msg) {
-            console.log("update recieved at " + Date() + msg.data);
+            console.log("update recieved at " + Date() + JSON.parse(msg.data));
             //document.getElementById("test5").innerHTML = "";
             var ul = document.getElementById("test5");
 
@@ -52,8 +51,19 @@
                     document.getElementById(json.data[i].id + "_go_action").classList.remove('disabled')
                     document.getElementById(json.data[i].id + "_restart_action").classList.remove('disabled')
                     document.getElementById(json.data[i].id + "_start_action").classList.add('disabled')
+                    document.getElementById(healthIconId).classList.remove('yellow-text');
                     document.getElementById(healthIconId).classList.add('green-text');
-                } else {
+                } else if (json.data[i].healthPing == "LIMBO") {
+                    document.getElementById(healthIconId).innerHTML = "cloud_upload"
+                    document.getElementById(json.data[i].id + "_stop_action").classList.add('disabled')
+                    document.getElementById(json.data[i].id + "_go_action").classList.remove('disabled')
+                    document.getElementById(json.data[i].id + "_restart_action").classList.add('disabled')
+                    document.getElementById(json.data[i].id + "_start_action").classList.add('disabled')
+                    document.getElementById(healthIconId).classList.remove('red-text');
+                    document.getElementById(healthIconId).classList.remove('green-text');
+                    document.getElementById(healthIconId).classList.add('yellow-text');
+
+                }else {
                     //console.log("service down", json.data[i].id)
                     document.getElementById(healthIconId).innerHTML = "cloud_off"
                     if (document.getElementById(healthIconId).classList.contains('green-text')) {
@@ -64,6 +74,7 @@
                     document.getElementById(json.data[i].id + "_go_action").classList.add('disabled')
                     document.getElementById(json.data[i].id + "_restart_action").classList.add('disabled')
                     document.getElementById(json.data[i].id + "_start_action").classList.remove('disabled')
+                    document.getElementById(healthIconId).classList.remove('yellow-text');
                     document.getElementById(healthIconId).classList.add('red-text');
                 }
                 for (var j = 0; j < json.data[i].backend.length; j++) {

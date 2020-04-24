@@ -141,7 +141,7 @@ func GetVersions() []string {
 }
 
 //GetRestAPI GET rest APIs response with error handling
-func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath string) ([]byte, int) {
+func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath string) ([]byte, int, string) {
 	client := http.Client{}
 	req, err := http.NewRequest(method, urlInput, nil)
 	if auth {
@@ -162,7 +162,7 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 		helpers.Check(err, false, "The HTTP response")
 
 		if err != nil {
-			return nil, 0
+			return nil, 0, err.Error()
 		}
 		if resp.StatusCode != 200 {
 			log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
@@ -183,8 +183,8 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 		} else {
 			data, err := ioutil.ReadAll(resp.Body)
 			helpers.Check(err, false, "Data read")
-			return data, statusCode
+			return data, statusCode, ""
 		}
 	}
-	return nil, 0
+	return nil, 0, err.Error()
 }

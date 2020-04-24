@@ -241,12 +241,15 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
 		partsPort := strings.Split(mp.Details[i].URL, ":")
 		if !mp.Details[i].Platform {
-			result, code := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
+			result, code, errCode := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
 			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
 				mp.Details[i].HealthPing = "OK"
-			} else {
+			} else if strings.Contains(errCode, "connection refused") {
 				//fmt.Println(string(result), mp.Details[i].URL)
 				mp.Details[i].HealthPing = "DOWN"
+			} else {
+				fmt.Println(string(result), mp.Details[i].URL)
+				mp.Details[i].HealthPing = "LIMBO"
 			}
 
 			ping(mp.Details[i].Backend, healthcheckHost)
@@ -254,7 +257,7 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 		}
 		//platform healthcheck
 		if mp.Details[i].Platform {
-			result, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
+			result, _, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
 			var platform platformStruct
 			json.Unmarshal(result, &platform)
 
