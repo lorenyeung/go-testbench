@@ -1,48 +1,92 @@
 <html>
-    <head>
-        <link rel="icon" href="images/jfrog-glasses.png">
-        <title>Loren's Testbench</title>
-        <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-        <base target="_top">
 
-        <script>
-            var href = window.location.href
-            var arr = href.split("/")
+<head>
+    <link rel="icon" href="images/jfrog-glasses.png">
+    <title>Loren's Testbench</title>
+    <meta name="google-site-verification" content="pcbPwXra8N-7_ZVG_KjYO35zhbiXCZqn3E5RpyMUdiM" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <base target="_top">
 
-            url = 'ws://'+arr[2]+'/ws';
-            c = new WebSocket(url);
-            c.onopen = function() {
-                console.log("Primary Socket Connected.");
-                connectedPrimary = true;
-                c.send("sendImageUpdates");
-            };
-            c.onmessage = function(msg){
-                console.log("update recieved at "+Date()+ JSON.parse(msg.data));
-                //document.getElementById("test5").innerHTML = "";
-                var ul = document.getElementById("test5");
-                
+    <script>
+        var href = window.location.href
+        var host = href.split("/")
 
-                var fragment = document.createDocumentFragment();
-                var json = JSON.parse(msg.data)            
-                for (var i =0; i < json.data.length; i++) {
-                    if (json.data[i].healthPing == "OK") {
+        url = 'ws://' + host[2] + '/ws';
+        c = new WebSocket(url);
+        c.onopen = function () {
+            console.log("Primary Socket Connected.");
+            connectedPrimary = true;
+            c.send("sendImageUpdates");
+        };
+        c.onmessage = function (msg) {
+            console.log("update recieved at " + Date() + JSON.parse(msg.data));
+            //document.getElementById("test5").innerHTML = "";
+            var ul = document.getElementById("test5");
 
-                    } else {
+            // update the health check data when there is an update through the websocket
+            var fragment = document.createDocumentFragment();
+            var json = JSON.parse(msg.data)
+            for (var i = 0; i < json.data.length; i++) {
+                if (json.data[i].healthPing == "OK") {
 
-                    }
-                    for (var j = 0; j < json.data[i].backend.length; j++) {
-                        document.getElementById(json.data[i].id+json.data[i].backend[j].service).innerHTML = json.data[i].backend[j].health
+                } else {
 
-                    }
                 }
-        }
-            c.onclose = function() {
-                c = null;
+                for (var j = 0; j < json.data[i].backend.length; j++) {
+                    document.getElementById(json.data[i].id + json.data[i].backend[j].service).innerHTML = json.data[i].backend[j].health
+
+                }
             }
-            
-        </script>
-    </head>
+        }
+        c.onclose = function () {
+            c = null;
+        }
+
+        const button = document.getElementById('post-btn');
+
+        //             button.addEventListener('click', async _ => {
+        //   try {     
+        //     const response = await fetch('yourUrl', {
+        //       method: 'post',
+        //       body: {
+        //         // Your body
+        //       }
+        //     });
+        //     console.log('Completed!', response);
+        //   } catch(err) {
+        //     console.error(`Error: ${err}`);
+        //   }
+        // });
+
+        //msg is stop or start if msg2 is null, else msg is stop, msg2 is start. triggered by onclick
+        function actionable(msg, msg2) {
+            console.log(msg, msg2)
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", 'http://'+host[2]+'/actionable', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({
+                first: msg,
+                second: msg2
+            }));
+        }
+
+        // window.addEventListener('load', (event) => {
+        //     const list = document.getElementsByTagName("a")
+        //     console.log(list.length)
+        //     for (var i = 0; i < list.length; i++) {
+        //         if (list[i].id.includes("_action")) {
+        //             list[i].addEventListener('click', async e => {
+        //                 console.log("clicked", e);
+        //             } 
+
+        //             );
+        //             console.log(list[i].id)
+        //         }
+        //     }
+        // });
+
+    </script>
+</head>
 
 <body>
     {{ template "navbar" . }}
@@ -59,7 +103,7 @@
         </ul>
         <blockquote>"If you're going through hell, keep going."</blockquote>
         <div id="services" class="col s12">
-            <h3 id = "helloServices">Services</h3>
+            <h3 id="helloServices">Services</h3>
             <div class="row" id="service_row"></div>
             <div class="card-content grey lighten-4">
                 <div id="test4">
@@ -68,9 +112,11 @@
                         {{range .art_data}}
                         <li>
                             {{ if (eq .HealthPing "OK" )}}
-                            <div class="collapsible-header" id={{.ID}}><i class="material-icons green-text">cloud_done</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i
+                                    class="material-icons green-text">cloud_done</i>{{.Title}}</div>
                             {{else}}
-                            <div class="collapsible-header" id={{.ID}}><i class="material-icons red-text">cloud_off</i>{{.Title}}</div>
+                            <div class="collapsible-header" id={{.ID}}><i
+                                    class="material-icons red-text">cloud_off</i>{{.Title}}</div>
                             {{end}}
                             <div class="collapsible-body">
                                 <span>
@@ -90,18 +136,29 @@
                                             <tr>
                                                 <p>
                                                     {{ if (eq .HealthPing "OK" )}}
-                                                    <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}"
-                                                        href="/authed/stop/{{.ID}}"><i
-                                                            class="material-icons left">delete</i>stop</a>
+                                                    <a class="waves-effect waves-light btn-flat btn"
+                                                        id="{{.ID}}_stop_action" onClick="actionable({{.StopCmd}})">
+                                                        <i class="material-icons left">delete</i>
+                                                        stop
+                                                    </a>
+                                                    <a class="waves-effect waves-light btn-flat btn"
+                                                        id="{{.ID}}_restart_action"
+                                                        onClick="actionable({{.StopCmd}}, {{.StartCmd}})">
+                                                        <i class="material-icons left">delete</i>
+                                                        restart
+                                                    </a>
                                                     <a class="waves-effect waves-light right-align btn-small btn-flat"
-                                                        id="{{.ID}}" href="{{.URL}}">GO</a>
+                                                        id="{{.ID}}" href="{{.URL}}">
+                                                        GO
+                                                    </a>
                                                     {{else}}
-                                                    <a class="waves-effect waves-light btn-flat btn" id="{{.ID}}"
-                                                        href="/authed/start/{{.ID}}"><i
-                                                            class="material-icons left">cloud</i>start</a>
+                                                    <a class="waves-effect waves-light btn-flat btn"
+                                                        id="{{.ID}}_start_action" onClick="actionable({{.StartCmd}})">
+                                                        <i class="material-icons left">cloud</i>
+                                                        start
+                                                    </a>
                                                     {{end}}
-                                                    <a class="waves-effect waves-light btn-flat btn"><i
-                                                            class="material-icons left">delete</i>restart</a>
+
                                                 </p>
                                             </tr>
                                     </table>
@@ -121,7 +178,8 @@
                         {{range .containers}}
                         <li>
                             {{ if (eq .State "running" )}}
-                            <div class="collapsible-header"><i class="material-icons green-text">cloud_done</i>{{.Names}}
+                            <div class="collapsible-header"><i
+                                    class="material-icons green-text">cloud_done</i>{{.Names}}
                             </div>
                             {{else}}
                             <div class="collapsible-header"><i class="material-icons red-text">cloud_off</i>{{.Names}}

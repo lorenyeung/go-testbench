@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/user"
 	"reflect"
 	"strings"
@@ -38,6 +39,13 @@ type metadataJSON struct {
 	Platform        bool          `json:"platform"`
 	PlatformHcCall  string        `json:"platformHcCall"`
 	HealthPing      string        `json:"healthPing"`
+	StartCmd        []string      `json:"startCmd"`
+	StopCmd         []string      `json:"stopCmd"`
+}
+
+type actionJSON struct {
+	First  []string `json:"first"`
+	Second []string `json:"second"`
 }
 
 type backendJSON struct {
@@ -108,6 +116,25 @@ func main() {
 		})
 	})
 
+	router.POST("/actionable", func(c *gin.Context) {
+
+		var action actionJSON
+		c.BindJSON(&action)
+
+		for i := range action.First {
+			fmt.Println("stop or start", action.First[i])
+			bashCommandWrapper(action.First[i])
+		}
+		if len(action.Second) > 0 {
+			for i := range action.Second {
+				fmt.Println("restart", action.Second[i])
+				bashCommandWrapper(action.Second[i])
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"response": c.PostForm("stuff")})
+	})
+
 	// backend listing for docker containers
 	var containersList []map[string]interface{}
 	containerRaw, _ := json.Marshal(dockerapi.ListRunningContainers())
@@ -133,6 +160,22 @@ func main() {
 		wshandler(c.Writer, c.Request, msg, websocketHostVar+":", checkPtr)
 	})
 	router.Run("0.0.0.0:" + portVar) // listen and serve on 0.0.0.0:8080
+}
+
+func bashCommandWrapper(cmdString string) string {
+	cmd := exec.Command(cmdString)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Println(err)
+		return "error"
+	}
+	return "OK"
 }
 
 var wsupgrader = websocket.Upgrader{
