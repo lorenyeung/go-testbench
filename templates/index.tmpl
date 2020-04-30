@@ -10,9 +10,9 @@
     <script>
         window.addEventListener('load', (event) => {
             var quotes = ["If you're going through hell, keep going.",
-            "Either you run the day or the day runs you.",
-            "I was born not knowing and have had only a little time to change that here and there.",
-            "People say nothing is impossible, but I do nothing every day."
+                "Either you run the day or the day runs you.",
+                "I was born not knowing and have had only a little time to change that here and there.",
+                "People say nothing is impossible, but I do nothing every day."
             ];
 
             function getRandomInt(max) {
@@ -29,7 +29,7 @@
         c.onopen = function () {
             console.log("Primary Socket Connected.");
             connectedPrimary = true;
-            c.send("sendImageUpdates");
+            //c.send("sendImageUpdates");
         };
         c.onmessage = function (msg) {
             console.log("update recieved at " + Date() + JSON.parse(msg.data));
@@ -63,7 +63,7 @@
                     document.getElementById(healthIconId).classList.remove('green-text');
                     document.getElementById(healthIconId).classList.add('yellow-text');
 
-                }else {
+                } else {
                     //console.log("service down", json.data[i].id)
                     document.getElementById(healthIconId).innerHTML = "cloud_off"
                     if (document.getElementById(healthIconId).classList.contains('green-text')) {
@@ -82,7 +82,9 @@
 
                 }
             }
+            c.send(msg.data);
         }
+
         c.onclose = function () {
             c = null;
         }
@@ -103,15 +105,26 @@
         // });
 
         //msg is stop or start if msg2 is null, else msg is stop, msg2 is start. triggered by onclick
-        function actionable(msg, msg2) {
+        function actionable(msg, msg2, title, state) {
+            M.toast({ html: title + ' is being ' + state + 'ed', classes: 'rounded indigo' })
             console.log(msg, msg2)
             var xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status != 200) {
+                    // Typical action to be performed when the document is ready:
+                    var resp = JSON.parse(xhr.response)
+                    M.toast({ html: resp.response, classes: 'rounded red' })
+                }
+            };
+
             xhr.open("POST", 'http://' + host[2] + '/actionable', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.send(JSON.stringify({
                 first: msg,
                 second: msg2
             }));
+
         }
 
         // window.addEventListener('load', (event) => {
@@ -181,13 +194,14 @@
                                                 <p>
 
                                                     <a class="waves-effect waves-light btn-flat btn disabled"
-                                                        id="{{.ID}}_stop_action" onClick="actionable({{.StopCmd}})">
+                                                        id="{{.ID}}_stop_action"
+                                                        onClick="actionable({{.StopCmd}}, null, {{.Title}}, 'stop')">
                                                         <i class="material-icons left">stop</i>
                                                         stop
                                                     </a>
                                                     <a class="waves-effect waves-light btn-flat btn disabled"
                                                         id="{{.ID}}_restart_action"
-                                                        onClick="actionable({{.StopCmd}}, {{.StartCmd}})">
+                                                        onClick="actionable({{.StopCmd}}, {{.StartCmd}}, {{.Title}}, 'restart')">
                                                         <i class="material-icons left">repeat</i>
                                                         restart
                                                     </a>
@@ -198,7 +212,8 @@
                                                     </a>
 
                                                     <a class="waves-effect waves-light btn-flat btn disabled"
-                                                        id="{{.ID}}_start_action" onClick="actionable({{.StartCmd}})">
+                                                        id="{{.ID}}_start_action"
+                                                        onClick="actionable({{.StartCmd}}, null, {{.Title}}, 'start')">
                                                         <i class="material-icons left">play_arrow</i>
                                                         start
                                                     </a>

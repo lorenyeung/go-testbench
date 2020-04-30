@@ -4,12 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"go-testbench/dockerapi"
 	"go-testbench/helpers"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -148,11 +146,11 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 		req.SetBasicAuth(userName, apiKey)
 	}
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
+		//fmt.Printf("The HTTP request failed with error %s\n", err)
 	} else {
 		//timeout of 5 seconds for client.do
 		c := make(chan struct{})
-		time.AfterFunc(2*time.Second, func() {
+		time.AfterFunc(1*time.Second, func() {
 			close(c)
 		})
 		req.Cancel = c
@@ -165,7 +163,7 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 			return nil, 0, err.Error()
 		}
 		if resp.StatusCode != 200 {
-			log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
+			//log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
 		}
 		//Mostly for HEAD requests
 		statusCode := resp.StatusCode

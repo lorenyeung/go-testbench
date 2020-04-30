@@ -16,11 +16,17 @@ import (
 	"os/user"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+type socket struct {
+	Details        []metadataJSON `json:"data"`
+	ContainersList []map[string]interface{}
+}
 
 type metadata struct {
 	Details []metadataJSON `json:"data"`
@@ -98,9 +104,20 @@ func main() {
 	file, err := os.Open(dataFileVar)
 	helpers.Check(err, true, "data JSON read")
 	msg, _ := ioutil.ReadAll(file)
-	var mp metadata
+	var mp, initMp metadata
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
+	json.Unmarshal([]byte(msg), &initMp)
+
+	var mpPtr *metadata = &mp
+	var wg sync.WaitGroup
+	go func() {
+		for {
+			mp = read(mp, msg, healthcheckHostVar+":")
+			time.Sleep(3 * time.Second)
+		}
+	}()
+	wg.Wait()
 
 	router := gin.Default()
 	router.LoadHTMLGlob(os.Getenv("GOPATH") + "/src/go-testbench/templates/*")
@@ -120,19 +137,23 @@ func main() {
 
 		var action actionJSON
 		c.BindJSON(&action)
+		var err error
 
 		for i := range action.First {
 			fmt.Println("stop or start", action.First[i])
-			bashCommandWrapper(action.First[i])
+			_, err = bashCommandWrapper(action.First[i])
 		}
 		if len(action.Second) > 0 {
 			for i := range action.Second {
 				fmt.Println("restart", action.Second[i])
-				bashCommandWrapper(action.Second[i])
+				_, err = bashCommandWrapper(action.Second[i])
 			}
 		}
-
-		c.JSON(http.StatusOK, gin.H{"response": c.PostForm("stuff")})
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"response": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"response": "OK"})
+		}
 	})
 
 	// backend listing for docker containers
@@ -142,10 +163,17 @@ func main() {
 	if err2 != nil {
 		panic(err)
 	}
+	var containersListPtr *[]map[string]interface{} = &containersList
 
-	check := read(mp, msg, healthcheckHostVar+":")
+	check := read(initMp, msg, healthcheckHostVar+":")
 	var checkPtr *metadata = &check
 
+	router.GET("/data", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": mp,
+		})
+
+	})
 	//websocket
 	//var clients = make(map[*websocket.Conn]bool) // connected clients
 	//var broadcast = make(chan check.Details)     //broadcast channel
@@ -157,12 +185,12 @@ func main() {
 	})
 
 	router.GET("/ws", func(c *gin.Context) {
-		wshandler(c.Writer, c.Request, msg, websocketHostVar+":", checkPtr)
+		wshandler(c.Writer, c.Request, msg, websocketHostVar+":", checkPtr, containersListPtr, mpPtr)
 	})
 	router.Run("0.0.0.0:" + portVar) // listen and serve on 0.0.0.0:8080
 }
 
-func bashCommandWrapper(cmdString string) string {
+func bashCommandWrapper(cmdString string) (string, error) {
 	command := strings.Split(cmdString, " ")
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdout = os.Stdout
@@ -170,13 +198,14 @@ func bashCommandWrapper(cmdString string) string {
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println(err)
+		return "ERROR", err
 	}
 	err = cmd.Wait()
 	if err != nil {
 		fmt.Println(err)
-		return "error"
+		return "ERROR", err
 	}
-	return "OK"
+	return "OK", nil
 }
 
 var wsupgrader = websocket.Upgrader{
@@ -184,7 +213,7 @@ var wsupgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHost string, initCheck *metadata) {
+func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHost string, initCheck *metadata, containersListInit *[]map[string]interface{}, mp *metadata) {
 	conn, err := wsupgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Failed to upgrade ws: %+v", err)
@@ -192,10 +221,13 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 	}
 	defer conn.Close()
 	//return init state on first call
-	initCheckJSON, _ := json.Marshal(*initCheck)
+	initCheckJSON, _ := json.Marshal(*mp) //sending current as a test
 	conn.WriteMessage(websocket.TextMessage, initCheckJSON)
-	t, msg2, errRead := conn.ReadMessage()
+
 	for {
+		//receive UI current status
+		t, msg2, errRead := conn.ReadMessage()
+		fmt.Println(t, string(msg2))
 		//keepalive
 		err := conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 		if err != nil {
@@ -204,30 +236,48 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 		if errRead != nil {
 			break
 		}
-		fmt.Println(t, string(msg2))
 
-		//need to store previous send, and if there is a change, then write to socket
-		var mp2 metadata
-		// Decode JSON into our map
-		json.Unmarshal([]byte(msg), &mp2)
-		check := read(mp2, msg, healthcheckHost)
-		if reflect.DeepEqual([]byte(fmt.Sprintf("%v", initCheck.Details)), []byte(fmt.Sprintf("%v", check.Details))) {
-			fmt.Println("it matches ---- check:", check.Details[3].Backend[4].Health, " init check:", initCheck.Details[3].Backend[4].Health)
-		} else {
-			fmt.Println("it doesn't ---- check:", check.Details[3].Backend[4].Health, " init check:", initCheck.Details[3].Backend[4].Health)
+		//check if UI current status == mp current data status, else wait?
+		var ui metadata
+		json.Unmarshal(msg2, &ui)
+
+		for reflect.DeepEqual([]byte(fmt.Sprintf("%v", ui.Details)), []byte(fmt.Sprintf("%v", mp.Details))) {
+			fmt.Println(mp.Details[4].ID, "it matches ---- check:", ui.Details[4].Backend[0].Health, " init check:", mp.Details[4].Backend[0].Health)
+			time.Sleep(3 * time.Second)
+			fmt.Println("it matches")
 		}
+		fmt.Println(mp.Details[4].ID, "it doesn't match ---- check:", ui.Details[4].Backend[0].Health, " init check:", mp.Details[4].Backend[0].Health)
 
-		if !reflect.DeepEqual(*initCheck, check) {
+		if !reflect.DeepEqual(ui, *mp) {
 			fmt.Println("it doesnt ----------------------------------------------------------------------------------------- it doesnt")
-			checkJSON, _ := json.Marshal(check)
+			checkJSON, _ := json.Marshal(mp)
 			err := conn.WriteMessage(websocket.TextMessage, checkJSON)
 
-			initCheck = &check
+			initCheck = mp
 			if err != nil {
 				break
 			}
 		}
-		time.Sleep(3 * time.Second)
+
+		var containersList []map[string]interface{}
+		containerRaw, _ := json.Marshal(dockerapi.ListRunningContainers())
+		err2 := json.Unmarshal([]byte(containerRaw), &containersList)
+		if err2 != nil {
+			panic(err)
+		}
+
+		if !reflect.DeepEqual(*containersListInit, containersList) {
+			//fmt.Println("container list doesn't match ------------------------------------------------", *containersListInit, "-----------------", containersList)
+		}
+		//		second := time.Now().Second()
+		// for second%3 != 0 {
+		// 	time.Sleep(1 * time.Second)
+		// 	if time.Now().Second()%3 == 0 {
+		// 		break
+		// 	}
+		// }
+		fmt.Println(time.Now().Second())
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -236,69 +286,79 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
 
+	//maybe concurrent this stuff
+	var wg sync.WaitGroup
+	wg.Add(len(mp.Details))
+	start := time.Now()
+
 	for i := range mp.Details {
-		//fmt.Println(mp.Details[i].Title)
-		//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
-		partsPort := strings.Split(mp.Details[i].URL, ":")
-		if !mp.Details[i].Platform {
-			result, code, errCode := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
-			if string(result) == mp.Details[i].HealthExpResp && code != 0 {
-				mp.Details[i].HealthPing = "OK"
-			} else if strings.Contains(errCode, "connection refused") {
-				//fmt.Println(string(result), mp.Details[i].URL)
-				mp.Details[i].HealthPing = "DOWN"
-			} else {
-				fmt.Println(string(result), mp.Details[i].URL)
-				mp.Details[i].HealthPing = "LIMBO"
-			}
-
-			ping(mp.Details[i].Backend, healthcheckHost)
-			//fmt.Println("testing status:", status)
-		}
-		//platform healthcheck
-		if mp.Details[i].Platform {
-			result, _, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
-			var platform platformStruct
-			json.Unmarshal(result, &platform)
-
-			// overall health check via router
-			if platform.Router.State == "HEALTHY" {
-				mp.Details[i].HealthPing = "OK"
-			}
-			//Backend[0] is always router
-			mp.Details[i].Backend[0].Health = platform.Router.State
-
-			for j := range platform.Services {
-
-				parts := strings.Split(platform.Services[j].ServiceID, "@")
-				//+1 is extremely hacky, should be index matching
-				//fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
-				if parts[0] == mp.Details[i].Backend[j+1].Jfid && mp.Details[i].Backend[j+1].Jfid != "" {
-					mp.Details[i].Backend[j+1].Health = platform.Services[j].Message
+		go func(i int) {
+			defer wg.Done()
+			//fmt.Println(mp.Details[i].Title)
+			//non jfrog platform, dumb tcp ping to backend + healthcheck if applicable
+			partsPort := strings.Split(mp.Details[i].URL, ":")
+			if !mp.Details[i].Platform {
+				result, code, errCode := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].HealthcheckCall, "", "", "")
+				if string(result) == mp.Details[i].HealthExpResp && code != 0 {
+					mp.Details[i].HealthPing = "OK"
+				} else if strings.Contains(errCode, "connection refused") {
+					//fmt.Println(string(result), mp.Details[i].URL)
+					mp.Details[i].HealthPing = "DOWN"
+				} else {
+					//fmt.Println(string(result), mp.Details[i].URL)
+					mp.Details[i].HealthPing = "LIMBO"
 				}
+
+				ping(mp.Details[i].Backend, healthcheckHost)
+				//fmt.Println("testing status:", status)
 			}
+			//platform healthcheck
+			if mp.Details[i].Platform {
+				result, _, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
+				var platform platformStruct
+				json.Unmarshal(result, &platform)
 
-			// non platform services check
-			//fmt.Println("non platform check")
-			for k := range mp.Details[i].Backend {
-				if mp.Details[i].Backend[k].Jfid == "" {
-					_, err := net.Dial("tcp", healthcheckHost+mp.Details[i].Backend[k].Port)
-					//fmt.Println(mp.Details[i].Backend[k].Service)
-					if err != nil {
-						//err response:dial tcp <host>:<port>: connect: connection refused
-						//fmt.Println(err)
-						mp.Details[i].Backend[k].Health = "DOWN"
+				// overall health check via router
+				if platform.Router.State == "HEALTHY" {
+					mp.Details[i].HealthPing = "OK"
+				}
+				//Backend[0] is always router
+				mp.Details[i].Backend[0].Health = platform.Router.State
 
-					} else {
-						//fmt.Println(conn, "OK")
-						mp.Details[i].Backend[k].Health = "OK"
+				for j := range platform.Services {
+
+					parts := strings.Split(platform.Services[j].ServiceID, "@")
+					//+1 is extremely hacky, should be index matching
+					//fmt.Println(parts[0], platform.Services[j], mp.Details[i].Backend[j+1].Jfid)
+					if parts[0] == mp.Details[i].Backend[j+1].Jfid && mp.Details[i].Backend[j+1].Jfid != "" {
+						mp.Details[i].Backend[j+1].Health = platform.Services[j].Message
 					}
 				}
-			}
 
-			//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused
-		}
+				// non platform services check
+				//fmt.Println("non platform check")
+				for k := range mp.Details[i].Backend {
+					if mp.Details[i].Backend[k].Jfid == "" {
+						_, err := net.Dial("tcp", healthcheckHost+mp.Details[i].Backend[k].Port)
+						//fmt.Println(mp.Details[i].Backend[k].Service)
+						if err != nil {
+							//err response:dial tcp <host>:<port>: connect: connection refused
+							//fmt.Println(err)
+							mp.Details[i].Backend[k].Health = "DOWN"
+
+						} else {
+							//fmt.Println(conn, "OK")
+							mp.Details[i].Backend[k].Health = "OK"
+						}
+					}
+				}
+
+				//err response:Get <url>: dial tcp <host>:<port>: connect: connection refused
+			}
+		}(i)
 	}
+	wg.Wait()
+	fmt.Println("read start", start, "read finish", time.Now(), "read diff", time.Since(start))
 	return mp
 }
 
