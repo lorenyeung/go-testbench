@@ -26,6 +26,7 @@ import (
 type socket struct {
 	Details        []metadataJSON `json:"data"`
 	ContainersList []map[string]interface{}
+	Messages       []string
 }
 
 type metadata struct {
@@ -36,6 +37,7 @@ type metadataJSON struct {
 	Backend         []backendJSON `json:"backend"`
 	VersionCall     string        `json:"versionCall"`
 	VersionSpec     string        `json:"versionSpec"`
+	VersionPing     string        `json:"versionPing"`
 	URL             string        `json:"url"`
 	HealthcheckCall string        `json:"healthcheckCall"`
 	HealthExpResp   string        `json:"healthExpResp"`
@@ -227,7 +229,7 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 	for {
 		//receive UI current status
 		t, msg2, errRead := conn.ReadMessage()
-		fmt.Println(t, string(msg2))
+		fmt.Println(t)
 		//keepalive
 		err := conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 		if err != nil {
@@ -263,7 +265,7 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 		containerRaw, _ := json.Marshal(dockerapi.ListRunningContainers())
 		err2 := json.Unmarshal([]byte(containerRaw), &containersList)
 		if err2 != nil {
-			panic(err)
+			panic(err2)
 		}
 
 		if !reflect.DeepEqual(*containersListInit, containersList) {
@@ -312,6 +314,19 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 				ping(mp.Details[i].Backend, healthcheckHost)
 				//fmt.Println("testing status:", status)
 			}
+			//version check
+			if mp.Details[i].VersionPing == "" {
+				result, _, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].VersionCall, "", "", "")
+
+				var versionResults map[string]interface{}
+				json.Unmarshal(result, &versionResults)
+
+				if mp.Details[i].VersionSpec != "" {
+					fmt.Println(versionResults[mp.Details[i].VersionSpec])
+					mp.Details[i].VersionPing = versionResults[mp.Details[i].VersionSpec].(string)
+				}
+			}
+
 			//platform healthcheck
 			if mp.Details[i].Platform {
 				result, _, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
