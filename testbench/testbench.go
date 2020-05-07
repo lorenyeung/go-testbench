@@ -330,12 +330,15 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 
 			//platform healthcheck
 			if mp.Details[i].Platform {
-				result, _, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
+				result, code, _ := auth.GetRestAPI("GET", false, "http://"+healthcheckHost+partsPort[2]+mp.Details[i].PlatformHcCall, "", "", "")
 				var platform platformStruct
 				json.Unmarshal(result, &platform)
 
 				// overall health check via router
-				if platform.Router.State == "HEALTHY" {
+
+				if code == 503 {
+					mp.Details[i].HealthPing = "LIMBO"
+				} else if platform.Router.State == "HEALTHY" {
 					mp.Details[i].HealthPing = "OK"
 				}
 				//Backend[0] is always router
