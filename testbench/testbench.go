@@ -107,6 +107,7 @@ func main() {
 	helpers.Check(err, true, "data JSON read")
 	msg, _ := ioutil.ReadAll(file)
 	var mp, initMp metadata
+
 	// Decode JSON into our map
 	json.Unmarshal([]byte(msg), &mp)
 	json.Unmarshal([]byte(msg), &initMp)
@@ -115,7 +116,9 @@ func main() {
 	var wg sync.WaitGroup
 	go func() {
 		for {
-			mp = read(mp, msg, healthcheckHostVar+":")
+			fmt.Println("outside before", mp.Details[0].VersionPing)
+			mp2 := read(mp, msg, healthcheckHostVar+":")
+			mp = mp2
 			time.Sleep(3 * time.Second)
 		}
 	}()
@@ -248,9 +251,8 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 			time.Sleep(3 * time.Second)
 			fmt.Println("it matches")
 		}
-		fmt.Println(mp.Details[4].ID, "it doesn't match ---- check:", ui.Details[4].Backend[0].Health, " init check:", mp.Details[4].Backend[0].Health)
-
 		if !reflect.DeepEqual(ui, *mp) {
+			//fmt.Println(cmp.Diff(ui, *mp))
 			fmt.Println("it doesnt ----------------------------------------------------------------------------------------- it doesnt")
 			checkJSON, _ := json.Marshal(mp)
 			err := conn.WriteMessage(websocket.TextMessage, checkJSON)
@@ -285,8 +287,6 @@ func wshandler(w http.ResponseWriter, r *http.Request, msg []byte, healthcheckHo
 
 // read data.json into useable information, update healthchecks
 func read(mp metadata, msg []byte, healthcheckHost string) metadata {
-	// Decode JSON into our map
-	json.Unmarshal([]byte(msg), &mp)
 
 	//maybe concurrent this stuff
 	var wg sync.WaitGroup
@@ -316,13 +316,14 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 			}
 			//version check
 			if mp.Details[i].VersionPing == "" {
+				fmt.Println("if check:", mp.Details[i].VersionPing, mp.Details[i].ID)
 				result, _, _ := auth.GetRestAPI("GET", false, mp.Details[i].URL+mp.Details[i].VersionCall, "", "", "")
 
 				var versionResults map[string]interface{}
 				json.Unmarshal(result, &versionResults)
 
 				if mp.Details[i].VersionSpec != "" {
-					fmt.Println(versionResults[mp.Details[i].VersionSpec])
+					fmt.Println("spec:", versionResults[mp.Details[i].VersionSpec], mp.Details[i].ID)
 					mp.Details[i].VersionPing = versionResults[mp.Details[i].VersionSpec].(string)
 				}
 			}
@@ -374,6 +375,7 @@ func read(mp metadata, msg []byte, healthcheckHost string) metadata {
 	}
 	wg.Wait()
 	fmt.Println("read start", start, "read finish", time.Now(), "read diff", time.Since(start))
+	fmt.Println("after", mp.Details[0].VersionPing)
 	return mp
 }
 
