@@ -8,10 +8,12 @@ import (
 	"go-testbench/helpers"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -140,7 +142,25 @@ func GetVersions() []string {
 
 //GetRestAPI GET rest APIs response with error handling
 func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath string) ([]byte, int, string) {
-	client := http.Client{}
+	timeStart := time.Now()
+	log.Debug("Starting request ", method, urlInput)
+
+	c := make(chan struct{})
+	timer := time.AfterFunc(2*time.Second, func() {
+		close(c)
+	})
+
+	var netTransport = &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout: 2 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 2 * time.Second,
+	}
+
+	client := http.Client{
+		Timeout:   2 * time.Second,
+		Transport: netTransport,
+	}
 	req, err := http.NewRequest(method, urlInput, nil)
 	if auth {
 		req.SetBasicAuth(userName, apiKey)
@@ -148,20 +168,23 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 	if err != nil {
 		//fmt.Printf("The HTTP request failed with error %s\n", err)
 	} else {
-		//timeout of 5 seconds for client.do
-		c := make(chan struct{})
-		time.AfterFunc(1*time.Second, func() {
-			close(c)
-		})
-		req.Cancel = c
-
 		resp, err := client.Do(req)
-
-		helpers.Check(err, false, "The HTTP response")
-
+		helpers.Check(err, false, "The HTTP response", helpers.Trace())
 		if err != nil {
 			return nil, 0, err.Error()
 		}
+		defer resp.Body.Close()
+		for {
+			timer.Reset(2 * time.Second)
+			// Try instead: timer.Reset(50 * time.Millisecond)
+			_, err = io.CopyN(ioutil.Discard, resp.Body, 256)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				log.Fatal(err)
+			}
+		}
+
 		if resp.StatusCode != 200 {
 			//log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
 		}
@@ -171,18 +194,20 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 		if filepath != "" && method == "GET" {
 			// Create the file
 			out, err := os.Create(filepath)
-			helpers.Check(err, false, "File create")
+			helpers.Check(err, false, "File create", helpers.Trace())
 			defer out.Close()
 
 			//done := make(chan int64)
 			//go helpers.PrintDownloadPercent(done, filepath, int64(resp.ContentLength))
 			_, err = io.Copy(out, resp.Body)
-			helpers.Check(err, false, "The file copy")
+			helpers.Check(err, false, "The file copy", helpers.Trace())
 		} else {
 			data, err := ioutil.ReadAll(resp.Body)
-			helpers.Check(err, false, "Data read")
+			helpers.Check(err, false, "Data read", helpers.Trace())
+			log.Debug("End request for ", method, urlInput, time.Now(), " duration:", time.Since(timeStart))
 			return data, statusCode, ""
 		}
 	}
+	log.Debug("End request for ", method, urlInput, time.Now(), " duration:", time.Since(timeStart))
 	return nil, 0, err.Error()
 }

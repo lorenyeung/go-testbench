@@ -3,13 +3,19 @@ package helpers
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"os/user"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/Sirupsen/logrus"
 )
 
 //FileStorageJSON file details call
@@ -64,7 +70,7 @@ func ByteCountDecimal(b int64) string {
 func StringToInt64(data string) int64 {
 	convert, err := strconv.ParseInt(data, 10, 64)
 	if err != nil {
-		fmt.Printf("%d is not of type %T", convert, convert)
+		log.Error("%d is not of type %T", convert, convert)
 		os.Exit(127)
 	}
 	return convert
@@ -86,9 +92,9 @@ func PrintDownloadPercent(done chan int64, path string, total int64) {
 			stop = true
 		default:
 			file, err := os.Open(path)
-			Check(err, true, "Opening file path")
+			Check(err, true, "Opening file path", Trace())
 			fi, err := file.Stat()
-			Check(err, true, "Getting file statistics")
+			Check(err, true, "Getting file statistics", Trace())
 			size := fi.Size()
 			if size == 0 {
 				size = 1
@@ -108,7 +114,7 @@ func PrintDownloadPercent(done chan int64, path string, total int64) {
 //ComputeSha256 self explanatory
 func ComputeSha256(path string) string {
 	f, err := os.Open(path)
-	Check(err, true, "Opening file path")
+	Check(err, true, "Opening file path", Trace())
 	defer f.Close()
 
 	h := sha256.New()
@@ -119,11 +125,77 @@ func ComputeSha256(path string) string {
 }
 
 //Check logger for errors
-func Check(e error, panic bool, logs string) {
-	if e != nil && panic {
-		log.Panicf("%s failed with error:%s\n", logs, e)
+func Check(e error, panicCheck bool, logs string, trace TraceData) {
+	if e != nil && panicCheck {
+		log.Error(logs, " failed with error:", e, " ", trace.Fn, " on line:", trace.Line)
+		panic(e)
 	}
-	if e != nil && !panic {
-		log.Printf("%s failed with error:%s\n", logs, e)
+	if e != nil && !panicCheck {
+		log.Warn(logs, " failed with error:", e, " ", trace.Fn, " on line:", trace.Line)
 	}
+}
+
+//TraceData trace data struct
+type TraceData struct {
+	File string
+	Line int
+	Fn   string
+}
+
+//Trace get function data
+func Trace() TraceData {
+	var trace TraceData
+	pc, file, line, ok := runtime.Caller(1)
+	if !ok {
+		log.Warn("Failed to get function data")
+		return trace
+	}
+
+	fn := runtime.FuncForPC(pc)
+	trace.File = file
+	trace.Line = line
+	trace.Fn = fn.Name()
+	return trace
+}
+
+//SetLogger sets logger settings
+func SetLogger(logLevelVar string) {
+	level, err := log.ParseLevel(logLevelVar)
+	if err != nil {
+		level = log.InfoLevel
+	}
+	log.SetLevel(level)
+
+	log.SetReportCaller(true)
+	customFormatter := new(logrus.TextFormatter)
+	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
+	customFormatter.QuoteEmptyFields = true
+	customFormatter.FullTimestamp = true
+	customFormatter.CallerPrettyfier = func(f *runtime.Frame) (string, string) {
+		repopath := strings.Split(f.File, "/")
+		function := strings.Replace(f.Function, "go-pkgdl/", "", -1)
+		return fmt.Sprintf("%s\t", function), fmt.Sprintf(" %s:%d\t", repopath[len(repopath)-1], f.Line)
+	}
+
+	logrus.SetFormatter(customFormatter)
+	log.Info("Log level set at ", level)
+}
+
+//Flags struct
+type Flags struct {
+	HealthcheckHostVar, PortVar, DataFileVar, WebsocketHostVar, LogLevelVar, ConfigFolder string
+}
+
+//SetFlags function
+func SetFlags(userVar *user.User) Flags {
+	var flags Flags
+	configFile := "data.json"
+	flags.ConfigFolder = "/.lorenygo/testBench/"
+	flag.StringVar(&flags.LogLevelVar, "log", "INFO", "Order of Severity: TRACE, DEBUG, INFO, WARN, ERROR, FATAL, PANIC")
+	flag.StringVar(&flags.PortVar, "port", "8080", "Port")
+	flag.StringVar(&flags.HealthcheckHostVar, "healthcheckhost", "loren.jfrog.team", "healthcheck Host")
+	flag.StringVar(&flags.WebsocketHostVar, "websockethost", "loren.jfrog.team", "websocket Host")
+	flag.StringVar(&flags.DataFileVar, "data", userVar.HomeDir+flags.ConfigFolder+configFile, "Path to JSON file")
+	flag.Parse()
+	return flags
 }
