@@ -145,10 +145,10 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 	timeStart := time.Now()
 	log.Debug("Starting request ", method, urlInput)
 
-	c := make(chan struct{})
-	timer := time.AfterFunc(2*time.Second, func() {
-		close(c)
-	})
+	//c := make(chan struct{})
+	// timer := time.AfterFunc(2*time.Second, func() {
+	// 	close(c)
+	// })
 
 	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
@@ -174,16 +174,17 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 			return nil, 0, err.Error()
 		}
 		defer resp.Body.Close()
-		for {
-			timer.Reset(2 * time.Second)
-			// Try instead: timer.Reset(50 * time.Millisecond)
-			_, err = io.CopyN(ioutil.Discard, resp.Body, 256)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				log.Fatal(err)
-			}
-		}
+		// for {
+		// 	//timer.Reset(2 * time.Second)
+		// 	timer.Reset(50 * time.Millisecond)
+		// 	_, err = io.CopyN(ioutil.Discard, resp.Body, 256)
+		// 	if err == io.EOF {
+		// 		log.Warn("io eof")
+		// 		break
+		// 	} else if err != nil {
+		// 		log.Fatal(err)
+		// 	}
+		// }
 
 		if resp.StatusCode != 200 {
 			//log.Printf("Got status code %d for %s, continuing\n", resp.StatusCode, urlInput)
@@ -204,7 +205,7 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, filepath s
 		} else {
 			data, err := ioutil.ReadAll(resp.Body)
 			helpers.Check(err, false, "Data read", helpers.Trace())
-			log.Debug("End request for ", method, urlInput, time.Now(), " duration:", time.Since(timeStart))
+			log.Debug("End request for ", method, " url:", urlInput, time.Now(), " duration:", time.Since(timeStart))
 			return data, statusCode, ""
 		}
 	}
